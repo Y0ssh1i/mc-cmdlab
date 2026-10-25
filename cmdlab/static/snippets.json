@@ -162,8 +162,8 @@
     "team modify blue collisionRule never",
     "team modify blue deathMessageVisibility never"
    ],
-   "notes_ja": "値は never / always が両方の版で同じ書き方です。相手チームだけに隠す値は版で綴りが変わるので、エディタの点検で確かめてください。",
-   "notes_en": "never / always are spelled the same in every version. The 'hide for other teams' value changed spelling between versions, so check it in the editor."
+   "notes_ja": "値は never / always が両方の版で同じ書き方です。相手チームだけに隠す値などは版で綴りが変わることがあるので、使う版のサーバーで一度流して確かめてください。",
+   "notes_en": "never / always are spelled the same in every version. Values such as 'hide for other teams' may be spelled differently between versions; run them once on your version's server."
   },
   {
    "id": "team_count",

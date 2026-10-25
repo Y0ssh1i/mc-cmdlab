@@ -1,0 +1,517 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>mc-cmdlab Guide</title>
+<style>
+:root { --bg:#f7f7f5; --card:#fff; --ink:#1d1d1f; --sub:#6b6b70; --line:#e3e3e0; --acc:#2f6f4e; --ok:#2f7d4a; --ng:#b3261e; --code:#f1f1ee;
+  --imp:#d9822b; --chn:#3a9b6a; --rep:#7a5cc7; }
+@media (prefers-color-scheme: dark) { :root { --bg:#16171a; --card:#1f2024; --ink:#ececec; --sub:#a0a0a6; --line:#2e2f34; --acc:#6fc49a; --ok:#6fc49a; --ng:#ff8a80; --code:#26272c;
+  --imp:#f0a050; --chn:#5cc48c; --rep:#a58cf0; } }
+* { box-sizing: border-box; }
+html { scroll-behavior:smooth; scroll-padding-top:64px; }
+body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.7 system-ui, "Hiragino Sans", "Yu Gothic UI", sans-serif; }
+a { color:var(--acc); }
+header { padding:20px 24px 8px; } h1 { margin:0; font-size:22px; } header p { margin:4px 0 0; color:var(--sub); }
+.top { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; }
+.top .links { margin-left:auto; display:flex; gap:14px; flex-wrap:wrap; font-size:14px; }
+nav.toc { position:sticky; top:0; z-index:10; background:var(--bg); border-bottom:1px solid var(--line); padding:8px 24px; display:flex; gap:6px; flex-wrap:wrap; }
+nav.toc a { text-decoration:none; font-size:13px; padding:3px 10px; border:1px solid var(--line); border-radius:99px; color:var(--ink); background:var(--card); }
+nav.toc a:hover { border-color:var(--acc); color:var(--acc); }
+main { max-width:1100px; margin:0 auto; padding:16px 24px 48px; display:grid; grid-template-columns:minmax(0, 1fr); gap:16px; }
+@media (max-width: 700px) { main { padding:12px 16px 40px; } header, nav.toc { padding-left:16px; padding-right:16px; } }
+section { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:18px; min-width:0; }
+h2 { margin:0 0 10px; font-size:18px; } h2 span.n { color:var(--acc); margin-right:8px; }
+h3 { margin:18px 0 6px; font-size:15px; }
+p { margin:6px 0; } .sub { color:var(--sub); font-size:13px; }
+code, kbd { background:var(--code); padding:1px 5px; border-radius:4px; font:13px ui-monospace, Consolas, monospace; word-break:break-word; }
+pre { background:var(--code); border-radius:8px; padding:10px 12px; overflow:auto; font:12.5px/1.55 ui-monospace, Consolas, monospace; margin:6px 0; white-space:pre; }
+table { width:100%; border-collapse:collapse; font-size:13.5px; } th, td { text-align:left; padding:6px 8px; border-bottom:1px solid var(--line); vertical-align:top; }
+th { color:var(--sub); font-weight:600; }
+.tablewrap { overflow-x:auto; }
+ol.steps { counter-reset:s; list-style:none; padding:0; margin:0; display:grid; gap:10px; }
+ol.steps > li { counter-increment:s; position:relative; padding:10px 12px 10px 48px; border:1px solid var(--line); border-radius:10px; }
+ol.steps > li::before { content:counter(s); position:absolute; left:12px; top:10px; width:26px; height:26px; border-radius:50%; background:var(--acc); color:#fff; display:grid; place-items:center; font-weight:700; font-size:14px; }
+ol.steps b { display:block; }
+.cards { display:grid; grid-template-columns:repeat(auto-fit, minmax(min(220px, 100%), 1fr)); gap:10px; }
+.card { border:1px solid var(--line); border-radius:10px; padding:10px 12px; }
+.card h4 { margin:0 0 4px; font-size:14px; }
+.tagk { display:inline-block; font-size:11px; padding:1px 8px; border-radius:99px; border:1px solid var(--line); color:var(--sub); margin-left:4px; }
+svg.dia { width:100%; height:auto; display:block; margin:8px 0; }
+svg.dia text { fill:var(--ink); font:12px system-ui, "Hiragino Sans", "Yu Gothic UI", sans-serif; }
+svg.dia .s { fill:var(--sub); font-size:11px; }
+svg.dia .box { fill:var(--card); stroke:var(--line); stroke-width:1.5; }
+svg.dia .acc { stroke:var(--acc); }
+svg.dia .ln { stroke:var(--sub); stroke-width:1.5; fill:none; }
+svg.dia .imp { fill:var(--imp); } svg.dia .chn { fill:var(--chn); } svg.dia .rep { fill:var(--rep); }
+svg.dia .wt { fill:#fff; font-weight:700; }
+.legend { display:flex; gap:12px; flex-wrap:wrap; font-size:13px; } .legend i { display:inline-block; width:12px; height:12px; border-radius:3px; margin-right:4px; vertical-align:-1px; }
+.diff td:first-child { white-space:nowrap; font-weight:600; }
+/* snippets */
+.filters { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin:8px 0 10px; }
+input, select { padding:7px 10px; border:1px solid var(--line); border-radius:8px; background:var(--bg); color:var(--ink); font:inherit; }
+#q { flex:1 1 220px; min-width:0; }
+.chips { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px; }
+.chip { font-size:12.5px; padding:3px 10px; border-radius:99px; border:1px solid var(--line); background:var(--card); color:var(--ink); cursor:pointer; }
+.chip.on { background:var(--acc); border-color:var(--acc); color:#fff; }
+.snips { display:grid; grid-template-columns:repeat(auto-fill, minmax(min(320px, 100%), 1fr)); gap:10px; }
+@media (max-width: 700px) { .snips { grid-template-columns:minmax(0, 1fr); } .top .links { margin-left:0; } }
+.snip { border:1px solid var(--line); border-radius:10px; padding:10px 12px; display:flex; flex-direction:column; gap:6px; min-width:0; }
+.snip h4 { margin:0; font-size:14.5px; }
+.snip .meta { font-size:11.5px; color:var(--sub); display:flex; gap:6px; flex-wrap:wrap; }
+.snip .meta span { border:1px solid var(--line); border-radius:99px; padding:0 7px; }
+.snip .meta .only { border-color:var(--imp); color:var(--imp); }
+.snip pre { max-height:240px; margin:0; font-size:12px; white-space:pre-wrap; word-break:break-all; }
+.snip .note { font-size:12.5px; color:var(--sub); }
+.snip .btns { display:flex; gap:6px; flex-wrap:wrap; margin-top:auto; }
+button { padding:6px 12px; border-radius:8px; border:1px solid var(--acc); background:var(--acc); color:#fff; font:inherit; font-size:13px; cursor:pointer; }
+button.ghost { background:transparent; color:var(--acc); }
+.count { font-size:13px; color:var(--sub); }
+details.faq { border-bottom:1px solid var(--line); padding:8px 0; } details.faq summary { cursor:pointer; font-weight:600; }
+details.faq div { padding:6px 0 2px 2px; }
+.toast { position:fixed; left:50%; bottom:20px; transform:translateX(-50%); background:var(--ink); color:var(--bg); padding:8px 14px; border-radius:8px; font-size:13px; opacity:0; transition:opacity .2s; pointer-events:none; }
+.toast.on { opacity:1; }
+</style>
+</head>
+<body>
+<header>
+  <div class="top">
+    <h1 data-i="title">mc-cmdlab 使い方</h1>
+    <div class="links">
+      <a href="/" data-i="l_main">← メインページ</a>
+      <a href="/editor" data-i="l_editor">コマンド設定ページ →</a>
+      <label style="display:flex;gap:6px;align-items:center;color:var(--sub);font-size:13px"><span data-i="lang">言語</span>
+        <select id="lang"><option value="ja">日本語</option><option value="en">English</option></select></label>
+    </div>
+  </div>
+  <p data-i="tagline">はじめての人向けの短い説明書と、ミニゲームでよく使うコマンドのセット集です。</p>
+</header>
+<nav class="toc">
+  <a href="#quickstart" data-i="t_qs">はじめ方</a>
+  <a href="#concepts" data-i="t_cc">しくみ</a>
+  <a href="#versions" data-i="t_ver">版の違い</a>
+  <a href="#snippets" data-i="t_sn">コマンド集</a>
+  <a href="#faq" data-i="t_faq">よくある質問</a>
+</nav>
+<main>
+
+<!-- (a) quick start -->
+<section id="quickstart">
+  <h2><span class="n">1</span><span data-i="h_qs">5つの手順ではじめる</span></h2>
+  <ol class="steps">
+    <li><b data-i="qs1_t">テスト用サーバーを用意する</b><span data-h="qs1"></span></li>
+    <li><b data-i="qs2_t">テスト用プレイヤーを入れる</b><span data-h="qs2"></span></li>
+    <li><b data-i="qs3_t">コマンド設定ページを開き、コンソールで1行ずつ試す</b><span data-h="qs3"></span></li>
+    <li><b data-i="qs4_t">部品とシナリオを組んで流す</b><span data-h="qs4"></span></li>
+    <li><b data-i="qs5_t">データパックに書き出す</b><span data-h="qs5"></span></li>
+  </ol>
+</section>
+
+<!-- (b) concepts -->
+<section id="concepts">
+  <h2><span class="n">2</span><span data-i="h_cc">しくみ</span></h2>
+
+  <h3 id="modules" data-i="h_mod">部品の3つの種類</h3>
+  <div class="cards">
+    <div class="card"><h4><span data-i="k_fn">関数</span><span class="tagk">function</span></h4><span data-h="k_fn_d"></span></div>
+    <div class="card"><h4><span data-i="k_bl">コマンドブロック</span><span class="tagk">blocks</span></h4><span data-h="k_bl_d"></span></div>
+    <div class="card"><h4><span data-i="k_st">プレイヤーの動き</span><span class="tagk">steps</span></h4><span data-h="k_st_d"></span></div>
+  </div>
+
+  <h3 id="scenarios" data-i="h_sc">シナリオ = 部品を呼ぶ順番</h3>
+  <p data-h="sc_d"></p>
+  <svg class="dia" viewBox="0 0 760 170" role="img" aria-labelledby="dsc">
+    <title id="dsc">scenario diagram</title>
+    <rect class="box acc" x="10" y="20" width="200" height="130" rx="10"/>
+    <text x="24" y="42" data-i="d_sc">シナリオ「普通に1試合」</text>
+    <text x="24" y="68" class="s">1. call setup</text>
+    <text x="24" y="88" class="s">2. call start</text>
+    <text x="24" y="108" class="s">3. call catch_bob</text>
+    <text x="24" y="128" class="s">4. run team list jail + expect</text>
+    <path class="ln" d="M210 85 H270" marker-end="url(#ar)"/>
+    <rect class="box" x="275" y="20" width="230" height="130" rx="10"/>
+    <text x="289" y="42" data-i="d_exp">展開された段</text>
+    <text x="289" y="68" class="s">1. function game:setup</text>
+    <text x="289" y="88" class="s">2. function game:start</text>
+    <text x="289" y="108" class="s">3. Alice attack Bob</text>
+    <text x="289" y="128" class="s">4. team list jail</text>
+    <path class="ln" d="M505 85 H565" marker-end="url(#ar)"/>
+    <rect class="box" x="570" y="20" width="180" height="130" rx="10"/>
+    <text x="584" y="42" data-i="d_res">結果</text>
+    <text x="584" y="68" class="s" data-i="d_res1">段ごとに OK / 失敗</text>
+    <text x="584" y="88" class="s" data-i="d_res2">サーバーの返事</text>
+    <text x="584" y="108" class="s" data-i="d_res3">各プレイヤーの画面</text>
+    <text x="584" y="128" class="s" data-i="d_res4">エラーの場所</text>
+    <defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10z" fill="currentColor" style="color:var(--sub)"/></marker></defs>
+  </svg>
+
+  <h3 id="tickload" data-i="h_tl">tick と load</h3>
+  <p data-h="tl_d"></p>
+  <svg class="dia" viewBox="0 0 760 120" role="img" aria-labelledby="dtl">
+    <title id="dtl">tick and load</title>
+    <rect class="box acc" x="10" y="30" width="150" height="56" rx="8"/><text x="24" y="54">/reload</text><text x="24" y="74" class="s" data-i="d_tl0">・サーバー起動時</text>
+    <path class="ln" d="M160 58 H210" marker-end="url(#ar)"/>
+    <rect class="box" x="215" y="30" width="150" height="56" rx="8"/><text x="229" y="54">load</text><text x="229" y="74" class="s" data-i="d_tl1">1回だけ: 準備</text>
+    <path class="ln" d="M365 58 H415" marker-end="url(#ar)"/>
+    <rect class="box" x="420" y="30" width="150" height="56" rx="8"/><text x="434" y="54">tick</text><text x="434" y="74" class="s" data-i="d_tl2">毎秒20回</text>
+    <path class="ln" d="M570 50 C 640 10, 640 106, 570 66" marker-end="url(#ar)"/>
+    <text x="630" y="54" class="s">1 tick = 0.05 s</text><text x="630" y="72" class="s">20 tick = 1 s</text>
+  </svg>
+
+  <h3 id="cmdblocks" data-i="h_cb">コマンドブロックの種類と置き方</h3>
+  <div class="tablewrap"><table>
+    <tr><th data-i="c_type">種類</th><th data-i="c_when">いつ動く</th><th data-i="c_use">よくある使い方</th></tr>
+    <tr><td><span style="color:var(--imp)">■</span> impulse</td><td data-i="cb_imp">動力を受けた瞬間に1回</td><td data-i="cb_imp_u">ボタン・感圧板・開始の合図</td></tr>
+    <tr><td><span style="color:var(--chn)">■</span> chain</td><td data-i="cb_chn">後ろのブロックが動いた直後(常時実行が既定)</td><td data-i="cb_chn_u">続けて行う処理を並べる</td></tr>
+    <tr><td><span style="color:var(--rep)">■</span> repeat</td><td data-i="cb_rep">動力がある間(常時実行なら常に)毎 tick</td><td data-i="cb_rep_u">見張り・時計・表示の更新</td></tr>
+    <tr><td>conditional</td><td colspan="2" data-i="cb_cond">すぐ後ろのブロックが成功したときだけ動く</td></tr>
+    <tr><td>auto</td><td colspan="2" data-i="cb_auto">常時実行(レッドストーン不要)。chain と repeat は既定で常時実行</td></tr>
+  </table></div>
+  <p data-h="cb_place"></p>
+  <svg class="dia" viewBox="0 0 760 210" role="img" aria-labelledby="dcb">
+    <title id="dcb">command block line layout</title>
+    <text x="10" y="18" class="s" data-i="d_side">横から見た図(東 = 右)</text>
+    <rect x="40" y="130" width="50" height="50" fill="#c0392b" rx="3"/><text x="44" y="200" class="s">redstone_block</text>
+    <rect class="imp" x="100" y="130" width="50" height="50" rx="3"/><text class="wt" x="104" y="160">imp</text>
+    <rect class="chn" x="160" y="130" width="50" height="50" rx="3"/><text class="wt" x="164" y="160">chain</text>
+    <rect class="chn" x="220" y="130" width="50" height="50" rx="3"/><text class="wt" x="224" y="160">chain</text>
+    <text x="102" y="122" class="s">origin</text>
+    <path class="ln" d="M150 155 H160 M210 155 H220" />
+    <text x="290" y="160" class="s" data-i="d_east">→ facing east: 次は東へ1つ</text>
+    <rect class="rep" x="460" y="130" width="50" height="50" rx="3"/><text class="wt" x="464" y="160">rep</text>
+    <rect class="chn" x="520" y="130" width="50" height="50" rx="3"/><text class="wt" x="524" y="160">up</text>
+    <rect class="chn" x="520" y="70" width="50" height="50" rx="3"/><text class="wt" x="524" y="100">chain</text>
+    <path class="ln" d="M545 130 V120" />
+    <text x="580" y="140" class="s" data-i="d_up1">2つ目に facing: up</text>
+    <text x="580" y="158" class="s" data-i="d_up2">→ 3つ目はその上</text>
+    <rect x="100" y="40" width="50" height="10" fill="#8a8a8a" rx="2"/><rect class="imp" x="100" y="50" width="50" height="50" rx="3" opacity=".5"/>
+    <text x="160" y="62" class="s" data-i="d_btn1">trigger: button → 1つ目の上にボタン</text>
+    <text x="160" y="80" class="s" data-i="d_btn2">trigger: redstone_block → 1つ目の後ろに置く</text>
+    <text x="160" y="98" class="s" data-i="d_btn3">trigger: none → 何もしない(常時実行・感圧板など)</text>
+  </svg>
+  <div class="legend"><span><i style="background:var(--imp)"></i>impulse</span><span><i style="background:var(--chn)"></i>chain</span><span><i style="background:var(--rep)"></i>repeat</span></div>
+
+  <h3 id="actions" data-i="h_act">プレイヤーの動き(do)</h3>
+  <div class="tablewrap"><table id="actTable"><tr><th>do</th><th data-i="c_args">主な引数</th><th data-i="c_what">すること</th></tr></table></div>
+
+  <h3 id="checks" data-i="h_chk">確かめ方(expect)</h3>
+  <div class="tablewrap"><table id="chkTable"><tr><th data-i="c_key">キー</th><th data-i="c_what">すること</th></tr></table></div>
+  <pre>{"run": "team list jail", "expect": {"output_contains": "Bob"}}
+{"player": "Alice", "do": "attack", "target": "Bob", "expect": {"hurt": "Bob", "seen_by": "Carol", "seen_contains": "確保"}}</pre>
+</section>
+
+<!-- (c) versions -->
+<section id="versions">
+  <h2><span class="n">3</span><span data-i="h_ver">版の違い(1.20.1 と 1.21.x)</span></h2>
+  <p class="sub" data-i="ver_d">同じことでも書き方が違う所。コマンド集は版を選ぶと、その版の書き方で出ます。</p>
+  <div class="tablewrap"><table class="diff" id="verTable"><tr><th data-i="c_what2">項目</th><th>1.20.1</th><th>1.21.x (1.21.6)</th></tr></table></div>
+</section>
+
+<!-- (d) snippets -->
+<section id="snippets">
+  <h2><span class="n">4</span><span data-i="h_sn">よく使うコマンド集</span></h2>
+  <p class="sub" data-h="sn_d"></p>
+  <div class="filters">
+    <input id="q" type="search" data-ph="ph_q" placeholder="検索">
+    <label style="display:flex;gap:6px;align-items:center;font-size:13px;color:var(--sub)"><span data-i="l_ver">版</span>
+      <select id="ver"><option>1.20.1</option><option>1.21.6</option></select></label>
+    <span class="count" id="count"></span>
+  </div>
+  <div class="chips" id="cats"></div>
+  <div class="snips" id="list"></div>
+</section>
+
+<!-- (e) FAQ -->
+<section id="faq">
+  <h2><span class="n">5</span><span data-i="h_faq">よくある質問</span></h2>
+  <div id="faqList"></div>
+</section>
+</main>
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const I18N = {
+  ja: {
+    title:'mc-cmdlab 使い方', l_main:'← メインページ', l_editor:'コマンド設定ページ →', lang:'言語',
+    tagline:'はじめての人向けの短い説明書と、ミニゲームでよく使うコマンドのセット集です。',
+    t_qs:'はじめ方', t_cc:'しくみ', t_ver:'版の違い', t_sn:'コマンド集', t_faq:'よくある質問',
+    h_qs:'5つの手順ではじめる',
+    qs1_t:'テスト用サーバーを用意する',
+    qs1:'<a href="/">メインページ</a>で版を選び、EULA に同意して「準備する」→「起動する」。公式のサーバーを手元だけで立てます(初回はダウンロードに数分)。ターミナルなら <code>python -m cmdlab setup --version 1.20.1 --accept-eula</code>。',
+    qs2_t:'テスト用プレイヤーを入れる',
+    qs2:'人数か名前(例: <code>Alice, Bob, Carol</code>)を入れて「入れる」。1人で何人ぶんでも試せます。プレイヤー自身に管理者コマンドを打たせたいときは OP の欄に印を付けます。',
+    qs3_t:'コマンド設定ページを開き、コンソールで1行ずつ試す',
+    qs3:'<a href="/editor">コマンド設定ページ</a>の上のコンソールに1行打って実行。サーバーの返事と、各プレイヤーに見えたもの(タイトル・チャット・アクションバー)がすぐ出ます。うまくいった行は「+ 部品に追加」で残せます。',
+    qs4_t:'部品とシナリオを組んで流す',
+    qs4:'ゲームを「準備」「開始」「毎 tick」「捕まったとき」などの部品に分け、シナリオで呼ぶ順番を決めて「▶ シナリオ全体を流す」。下の<a href="#snippets">コマンド集</a>から部品をそのまま足せます。段ごとに OK / 失敗とエラーの場所が出ます。',
+    qs5_t:'データパックに書き出す',
+    qs5:'「データパックに書き出す」で、関数の部品が選んだ版の形(1.20.1 は <code>functions/</code>、1.21 は <code>function/</code>)のデータパックになります。tick と load の印も付きます。自分のワールドの <code>datapacks</code> に入れて <code>/reload</code>。',
+    h_cc:'しくみ', h_mod:'部品の3つの種類',
+    k_fn:'関数', k_fn_d:'何行ものコマンドを本物のデータパックの関数として流します。<code>game:id</code> の名前で他から呼べ、tick / load の印も付けられます。マクロ(1.20.2+)も使えます。',
+    k_bl:'コマンドブロック', k_bl_d:'インパルス・チェーン・リピートを並べた1列。ワールドに実際に置いて動かし、各ブロックの成功と最後の出力を読みます。',
+    k_st:'プレイヤーの動き', k_st_d:'テスト用プレイヤーにたたく・歩く・ボタンを押す・/trigger を打つ等をさせる段と、その結果の確かめ。',
+    h_sc:'シナリオ = 部品を呼ぶ順番',
+    sc_d:'シナリオは <code>{"call": "部品の id"}</code>・コマンド・待ち・プレイヤーの動きを並べたものです。流すときに call が中身に展開されます。「普通に1試合」「全員捕まる」のように、試したい流れごとに作ります。',
+    d_sc:'シナリオ「普通に1試合」', d_exp:'展開された段', d_res:'結果', d_res1:'段ごとに OK / 失敗', d_res2:'サーバーの返事', d_res3:'各プレイヤーの画面', d_res4:'エラーの場所',
+    h_tl:'tick と load',
+    tl_d:'<b>load</b> の印の関数はデータパックを読み込んだときに1回、<b>tick</b> の印の関数は毎 tick(1秒に20回)動きます。時間を進めたいテストでは <code>{"wait": 2}</code> の段を入れます。',
+    d_tl0:'・サーバー起動時', d_tl1:'1回だけ: 準備', d_tl2:'毎秒20回',
+    h_cb:'コマンドブロックの種類と置き方', c_type:'種類', c_when:'いつ動く', c_use:'よくある使い方',
+    cb_imp:'動力を受けた瞬間に1回', cb_imp_u:'ボタン・感圧板・開始の合図',
+    cb_chn:'後ろのブロックが動いた直後(常時実行が既定)', cb_chn_u:'続けて行う処理を並べる',
+    cb_rep:'動力がある間(常時実行なら常に)毎 tick', cb_rep_u:'見張り・時計・表示の更新',
+    cb_cond:'すぐ後ろのブロックが成功したときだけ動く', cb_auto:'常時実行(レッドストーン不要)。chain と repeat は既定で常時実行',
+    cb_place:'1列は <code>origin</code> から <code>facing</code>(既定は east)の向きに1つずつ置かれます。ブロックに <code>facing</code> を書くとそこで曲がり(up・north など)、<code>pos</code> で位置を直接決めることもできます。動かし方は <code>trigger</code> で決めます。',
+    d_side:'横から見た図(東 = 右)', d_east:'→ facing east: 次は東へ1つ', d_up1:'2つ目に facing: up', d_up2:'→ 3つ目はその上',
+    d_btn1:'trigger: button → 1つ目の上にボタン', d_btn2:'trigger: redstone_block → 1つ目の後ろに置く', d_btn3:'trigger: none → 何もしない(常時実行・感圧板など)',
+    h_act:'プレイヤーの動き(do)', c_args:'主な引数', c_what:'すること', c_key:'キー',
+    h_chk:'確かめ方(expect)',
+    h_ver:'版の違い(1.20.1 と 1.21.x)', ver_d:'同じことでも書き方が違う所。コマンド集は版を選ぶと、その版の書き方で出ます。', c_what2:'項目',
+    h_sn:'よく使うコマンド集',
+    sn_d:'ミニゲームでよく使う形をそろえました。「エディタに追加」で部品としてコマンド設定ページに入ります(関数の名前空間は <code>game:</code>)。版を選ぶと、その版で動く書き方に切り替わります。全部、1.20.1 と 1.21.6 の本物のサーバーで読み込めることを確かめています。',
+    ph_q:'検索(例: タイマー、投票、bossbar)', l_ver:'版', all:'すべて', n_shown:(a,b)=>`${a} / ${b} 件`,
+    b_copy:'コピー', b_add:'エディタに追加', copied:'コピーしました', added:'エディタに送ります…', only:(v)=>`${v} のみ`, helpers:'一緒に作る関数',
+    k_function:'関数', k_blocks:'コマンドブロック', k_steps:'プレイヤーの動き', tick:'毎 tick', load:'load', none:'この版で使えるものはありません',
+    h_faq:'よくある質問'
+  },
+  en: {
+    title:'mc-cmdlab Guide', l_main:'← Main page', l_editor:'Command editor →', lang:'Language',
+    tagline:'A short manual for first-time users and a library of command sets often used in minigames.',
+    t_qs:'Quick start', t_cc:'Concepts', t_ver:'Versions', t_sn:'Snippets', t_faq:'FAQ',
+    h_qs:'Get started in 5 steps',
+    qs1_t:'Prepare a test server',
+    qs1:'On the <a href="/">main page</a>, pick a version, accept the EULA, press Prepare and then Start. It runs the official server on your PC only (the first download takes a few minutes). From a terminal: <code>python -m cmdlab setup --version 1.20.1 --accept-eula</code>.',
+    qs2_t:'Add test players',
+    qs2:'Enter a number or names (e.g. <code>Alice, Bob, Carol</code>) and press Add. One person can test with many players. Tick the OP box if the players themselves should run admin commands.',
+    qs3_t:'Open the editor and try commands in the console',
+    qs3:'Type a line into the console at the top of the <a href="/editor">command editor</a> and run it. The server reply and what each player saw (titles, chat, action bar) show at once. Keep a working line with "+ Add to part".',
+    qs4_t:'Build parts and scenarios, then run them',
+    qs4:'Split the game into parts such as setup, start, every tick and caught, decide the order in a scenario, and press "▶ Run the whole scenario". Add parts straight from the <a href="#snippets">snippet library</a> below. Every step shows OK / failed and where the error is.',
+    qs5_t:'Export as a data pack',
+    qs5:'"Export as data pack" turns the function parts into a data pack in the chosen version\'s layout (<code>functions/</code> in 1.20.1, <code>function/</code> in 1.21), with tick and load tags. Put it in your world\'s <code>datapacks</code> folder and run <code>/reload</code>.',
+    h_cc:'Concepts', h_mod:'Three kinds of parts',
+    k_fn:'Function', k_fn_d:'Many lines run as a real data pack function. Other parts call it as <code>game:id</code>; it can be marked tick or load. Macros (1.20.2+) work too.',
+    k_bl:'Command blocks', k_bl_d:'A line of impulse, chain and repeat blocks, really placed in the world and powered; each block\'s success and last output are read back.',
+    k_st:'Player actions', k_st_d:'Steps where test players hit, walk, press buttons, type /trigger and so on, plus checks of what happened.',
+    h_sc:'Scenario = the order parts are called in',
+    sc_d:'A scenario is a list of <code>{"call": "part id"}</code>, commands, waits and player actions. Calls are expanded when it runs. Make one per flow you want to test, such as "a normal round" or "everyone gets caught".',
+    d_sc:'Scenario "a normal round"', d_exp:'Expanded steps', d_res:'Results', d_res1:'OK / failed per step', d_res2:'Server reply', d_res3:'Each player\'s screen', d_res4:'Where the error is',
+    h_tl:'tick and load',
+    tl_d:'A function marked <b>load</b> runs once when the data pack loads; one marked <b>tick</b> runs every tick (20 times a second). Add a <code>{"wait": 2}</code> step when a test needs time to pass.',
+    d_tl0:'or server start', d_tl1:'once: setup', d_tl2:'20 times a second',
+    h_cb:'Command block types and placement', c_type:'Type', c_when:'When it runs', c_use:'Typical use',
+    cb_imp:'Once, when it gets power', cb_imp_u:'Buttons, pressure plates, start signals',
+    cb_chn:'Right after the block behind it runs (always active by default)', cb_chn_u:'Follow-up commands in order',
+    cb_rep:'Every tick while powered (always, if always active)', cb_rep_u:'Watchers, clocks, display updates',
+    cb_cond:'Runs only if the block just behind it succeeded', cb_auto:'Always active (no redstone). Chain and repeat are always active by default',
+    cb_place:'A line is placed one block at a time from <code>origin</code> in the <code>facing</code> direction (east by default). Give a block its own <code>facing</code> to turn there (up, north ...), or set <code>pos</code> exactly. <code>trigger</code> decides how it is powered.',
+    d_side:'Side view (east = right)', d_east:'→ facing east: next block one step east', d_up1:'2nd block facing: up', d_up2:'→ 3rd block goes on top',
+    d_btn1:'trigger: button → a button on top of the 1st block', d_btn2:'trigger: redstone_block → placed behind the 1st block', d_btn3:'trigger: none → nothing (always active, pressure plate ...)',
+    h_act:'Player actions (do)', c_args:'Main arguments', c_what:'What it does', c_key:'Key',
+    h_chk:'Checks (expect)',
+    h_ver:'Version differences (1.20.1 vs 1.21.x)', ver_d:'Same idea, different syntax. Pick a version in the snippet library to see that version\'s syntax.', c_what2:'Topic',
+    h_sn:'Snippet library',
+    sn_d:'Common minigame building blocks. "Add to editor" puts the snippet into the command editor as parts (functions use the namespace <code>game:</code>). Pick a version to switch to the syntax that works there. Every snippet was loaded on real 1.20.1 and 1.21.6 servers.',
+    ph_q:'Search (e.g. timer, vote, bossbar)', l_ver:'Version', all:'All', n_shown:(a,b)=>`${a} / ${b}`,
+    b_copy:'Copy', b_add:'Add to editor', copied:'Copied', added:'Sending to the editor…', only:(v)=>`${v} only`, helpers:'Helper functions',
+    k_function:'function', k_blocks:'command blocks', k_steps:'player actions', tick:'every tick', load:'load', none:'Nothing here for this version',
+    h_faq:'FAQ'
+  }
+};
+const ACTIONS = [
+  ['chat','text', 'チャットに書く(/trigger も打てる)', 'Say something in chat (can also type /trigger)'],
+  ['command','text', 'コマンドを打つ(先頭の / は不要)', 'Type a command (no leading / needed)'],
+  ['move','dir, seconds, sprint', '前後左右に決めた秒数だけ歩く', 'Walk forward/back/left/right for some seconds'],
+  ['goto','x, y, z, range', '道を探してその場所まで行く', 'Path-find to a position'],
+  ['walk','x, z', 'まっすぐ歩く(道は探さない)', 'Walk straight there (no path finding)'],
+  ['look_at','target', '他のプレイヤーの方を見る', 'Look at another player'],
+  ['attack','target, times, chase', '近づいてたたく。倒れたら止める', 'Get close and hit; stops when the target dies'],
+  ['use_block','x, y, z', 'ボタン・レバー・看板・チェストなどを右クリック', 'Right-click a button, lever, sign, chest ...'],
+  ['use_entity','target / type / name', '村人・モブ・防具立てなどを右クリック', 'Right-click a villager, mob, armor stand ...'],
+  ['dig','x, y, z', 'ブロックを壊す', 'Break a block'],
+  ['place','x, y, z, item', '持っているブロックを置く', 'Place the held block'],
+  ['click_slot','slot', '開いている箱・メニューの枠を押す(店・キット選び)', 'Click a slot in an open chest/menu (shops, kits)'],
+  ['close_window','', '開いている画面を閉じる', 'Close the open window'],
+  ['drop','', '手に持った物を捨てる', 'Drop the held item'],
+  ['jump / sneak','on', '跳ぶ / しゃがむ', 'Jump / sneak'],
+  ['select','slot', 'ホットバーの枠を選ぶ(0〜8)', 'Pick a hotbar slot (0-8)'],
+  ['use','seconds', '手に持った物を使う(弓を引く・食べる)', 'Use the held item (draw a bow, eat)'],
+  ['respawn','', '死んだあと復活する', 'Respawn after dying'],
+];
+const CHECKS = [
+  ['output_contains', 'サーバーの返事にこの文字が入っている', 'The server reply contains this text'],
+  ['output_regex', 'サーバーの返事が正規表現に合う(例 <code>has 2 </code>)', 'The server reply matches a regex (e.g. <code>has 2 </code>)'],
+  ['seen_by + seen_contains', 'そのプレイヤーの画面(チャット・タイトル・アクションバー)にこの文字が出た。seen_by を省くと誰かに', 'That player saw this text in chat, a title or the action bar; without seen_by, anyone'],
+  ['heard (+ heard_by)', 'その名前を含む音がプレイヤーに届いた(音そのものは鳴らない)', 'A sound whose name contains this reached a player (no audio is played)'],
+  ['died / hurt', 'その段でそのプレイヤーが倒された / ダメージを受けた', 'That player was killed / hurt during the step'],
+  ['allow_error', 'エラーの返事でも失敗にしない(わざと失敗させるテスト)', 'Do not fail on an error reply (tests that expect an error)'],
+  ['expect_success', '(コマンドブロック)各ブロックが成功すべきかの一覧。false で見張りの列は成功を求めない', '(command blocks) whether each block should succeed; false for watcher lines'],
+];
+const VERS = [
+  ['データパックの関数フォルダ','Function folder','<code>data/ns/functions/</code>','<code>data/ns/function/</code>'],
+  ['pack_format','pack_format','15','80'],
+  ['Java','Java','17+','21+'],
+  ['アイテムの指定','Item arguments','NBT: <code>iron_sword{Unbreakable:1b}</code>','<code>iron_sword[unbreakable={}]</code>'],
+  ['名前・説明','Name / lore','<code>{display:{Name:\'{"text":"…"}\'}}</code>','<code>[custom_name={text:"…"}]</code>'],
+  ['エンチャント','Enchantments','<code>{Enchantments:[{id:"…",lvl:1s}]}</code>','<code>[enchantments={"minecraft:sharpness":1}]</code>'],
+  ['効果の NBT','Effects NBT','<code>ActiveEffects:[{Id:14}]</code>','<code>active_effects:[{id:"minecraft:invisibility"}]</code>'],
+  ['持っている物を調べる','Check held item','<code>@a[nbt={SelectedItem:{id:"…"}}]</code>','<code>execute if items entity @s weapon.mainhand …</code>'],
+  ['名前の下のスコア','Below-name slot','<code>belowName</code>','<code>below_name</code>'],
+  ['チャットの文字','Text components','JSON(<code>{"text":"…"}</code>)','SNBT(1.21.5+、<code>{text:"…"}</code>。JSON の形もほぼそのまま通る)'],
+  ['押せる文字','Click / hover','<code>clickEvent</code> / <code>hoverEvent</code>','<code>click_event</code> / <code>hover_event</code>(1.21.5+)'],
+  ['属性の名前','Attribute names','<code>generic.movement_speed</code>','<code>movement_speed</code>(1.21.2+)'],
+  ['マクロ・random・return run','Macros, random, return run','—','1.20.2+ / 1.20.2+ / 1.20.3+'],
+  ['数字を隠す・行の名前','numberformat, display name','—','1.20.3+'],
+];
+const VERS_EN = { 'チャットの文字':['JSON (<code>{"text":"…"}</code>)','SNBT (1.21.5+, <code>{text:"…"}</code>; most JSON-style text still works)'],
+  '押せる文字':[null,'<code>click_event</code> / <code>hover_event</code> (1.21.5+)'], '属性の名前':[null,'<code>movement_speed</code> (1.21.2+)'] };
+const FAQ = [
+  ['コマンドが失敗したのはなぜ?', 'Why did a command fail?',
+   '結果の表の「サーバーの返事・エラーの場所」を見ます。<code>Unknown or incomplete command</code> はコマンド名か引数の数、<code>Incorrect argument</code> は値の書き方、<code>No player was found</code> は選んだ相手がいない(チームに誰もいない等)です。よくある原因は版の違い(<a href="#versions">表</a>)、スコアの項目を作る前に使った、関数の名前空間の打ち間違いです。',
+   'Look at "Server reply / error location" in the results table. <code>Unknown or incomplete command</code> means the command name or argument count, <code>Incorrect argument</code> means a value is written wrongly, <code>No player was found</code> means the selector matched nobody (e.g. an empty team). Common causes: version differences (<a href="#versions">table</a>), using an objective before creating it, a typo in the function namespace.'],
+  ['エラーの場所はどこに出る?', 'Where is the error column?',
+   '結果の表の「サーバーの返事・エラーの場所」の列です(左から4列目)。サーバーが返した <code>&lt;--[HERE]</code> の位置を赤字で示し、何文字目かも出します。段をクリックすると、その段の時点の各プレイヤーの画面も見られます。',
+   'It is the "Server reply / error location" column of the results table (4th from the left). The server\'s <code>&lt;--[HERE]</code> marker is shown in red with the column number. Click a step to see each player\'s screen at that moment.'],
+  ['OP の欄は何?', 'What is the OP option?',
+   'テスト用プレイヤーを管理者にします。プレイヤーの動き <code>command</code> で <code>/gamemode</code> などを本人に打たせたいとき、OP の有無で結果が変わるのを確かめたいときに使います。<code>/trigger</code> は OP なしで打てます。手元のテスト用サーバーにだけ効きます。',
+   'It makes the test players operators, so a <code>command</code> action can run things like <code>/gamemode</code> as that player, or you can compare with and without OP. <code>/trigger</code> works without OP. It only affects the local test server.'],
+  ['音は聞こえる?', 'Can I hear the sounds?',
+   '聞こえません。テスト用プレイヤーに届いた音の名前だけが記録されます。<code>"expect": {"heard": "levelup"}</code> で、その音が届いたかを確かめます。',
+   'No. Only the name of each sound that reached a test player is recorded. Check it with <code>"expect": {"heard": "levelup"}</code>.'],
+  ['自分のワールドで試したい', 'Can I use my own world?',
+   'できます。台本に <code>"world": "C:\\\\path\\\\to\\\\world"</code>(level.dat のあるフォルダ)を書くか、ターミナルで <code>python -m cmdlab run script.json --world C:\\path\\to\\world</code>。元のワールドは書き換えず、コピーで動かします。コマンドブロックの座標は自分のマップに合わせて変えてください。',
+   'Yes. Add <code>"world": "C:\\\\path\\\\to\\\\world"</code> (the folder with level.dat) to the script, or run <code>python -m cmdlab run script.json --world C:\\path\\to\\world</code>. A copy is used; your world is not changed. Adjust command block coordinates to your map.'],
+  ['コマンド集の部品が動かない', 'A snippet part does not work',
+   '多くの部品は <code>scoreboard objectives add game dummy</code> やチーム(red / blue、hunter / runner)が先にある前提です。「一緒に作る関数」がある部品は、それも同じ名前で部品にします(エディタに追加すると一緒に入ります)。座標は平らなワールドの地面(y = -60)が前提です。',
+   'Many snippets expect <code>scoreboard objectives add game dummy</code> and teams (red/blue, hunter/runner) to exist. If a snippet lists helper functions, they must exist as parts with those ids (Add to editor adds them). Coordinates assume a flat world with ground at y = -60.'],
+];
+
+let LANG = 'ja', DATA = null, CAT = 'all';
+const L = () => I18N[LANG];
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
+
+function applyLang() {
+  document.documentElement.lang = LANG;
+  document.querySelectorAll('[data-i]').forEach((el) => { const v = L()[el.dataset.i]; if (typeof v === 'string') el.textContent = v; });
+  document.querySelectorAll('[data-h]').forEach((el) => { const v = L()[el.dataset.h]; if (typeof v === 'string') el.innerHTML = v; });
+  document.querySelectorAll('[data-ph]').forEach((el) => { el.placeholder = L()[el.dataset.ph]; });
+  document.title = L().title;
+  const en = LANG === 'en';
+  $('actTable').innerHTML = `<tr><th>do</th><th>${esc(L().c_args)}</th><th>${esc(L().c_what)}</th></tr>` +
+    ACTIONS.map((a) => `<tr><td><code>${a[0]}</code></td><td>${a[1] ? '<code>' + a[1] + '</code>' : ''}</td><td>${en ? a[3] : a[2]}</td></tr>`).join('');
+  $('chkTable').innerHTML = `<tr><th>${esc(L().c_key)}</th><th>${esc(L().c_what)}</th></tr>` +
+    CHECKS.map((c) => `<tr><td><code>${c[0]}</code></td><td>${en ? c[2] : c[1]}</td></tr>`).join('');
+  $('verTable').innerHTML = `<tr><th>${esc(L().c_what2)}</th><th>1.20.1</th><th>1.21.x (1.21.6)</th></tr>` +
+    VERS.map((r) => { const o = en ? (VERS_EN[r[0]] || []) : []; return `<tr><td>${en ? r[1] : r[0]}</td><td>${o[0] || r[2]}</td><td>${o[1] || r[3]}</td></tr>`; }).join('');
+  $('faqList').innerHTML = FAQ.map((f, k) => `<details class="faq" id="faq${k + 1}"><summary>${en ? f[1] : f[0]}</summary><div>${en ? f[3] : f[2]}</div></details>`).join('');
+  renderSnips();
+}
+
+// ---------------- snippets ----------------
+function resolve(s, v) {  // the snippet as it is written for version v
+  const b = Object.assign({}, s, (s.variants || {})[v] || {});
+  delete b.variants;
+  return b;
+}
+function moduleList(s, v) {  // ready-to-use editor modules (project format)
+  const b = resolve(s, v), en = LANG === 'en';
+  const title = en ? s.title_en : s.title_ja;
+  const mods = [];
+  if (b.kind === 'function') {
+    const m = { id: b.suggest_id || b.id, label: title, kind: 'function', lines: b.lines || [], note: en ? s.desc_en : s.desc_ja };
+    if (b.tick) m.tick = true; if (b.load) m.load = true;
+    mods.push(m);
+  } else if (b.kind === 'blocks') {
+    const m = { id: b.id, label: title, kind: 'blocks', blocks: b.blocks, origin: b.origin || [0, -60, 10], note: en ? s.desc_en : s.desc_ja };
+    for (const k of ['facing', 'trigger', 'expect_success']) if (k in b) m[k] = b[k];
+    mods.push(m);
+  } else {
+    mods.push({ id: b.id, label: title, kind: 'steps', steps: b.steps || [], note: en ? s.desc_en : s.desc_ja });
+  }
+  for (const a of b.also || []) {
+    const m = { id: a.id, label: en ? a.label_en : a.label_ja, kind: 'function', lines: a.lines };
+    if (a.tick) m.tick = true; if (a.load) m.load = true;
+    mods.push(m);
+  }
+  return mods;
+}
+function snippetText(s, v) {
+  const b = resolve(s, v);
+  let out = '';
+  if (b.kind === 'function') out = (b.lines || []).join('\n');
+  else if (b.kind === 'blocks') out = b.blocks.map((x) => `# ${x.type}${x.conditional ? ' conditional' : ''}${x.auto ? ' auto' : ''}${x.facing ? ' facing=' + x.facing : ''}\n${x.cmd}`).join('\n');
+  else out = JSON.stringify(b.steps, null, 1);
+  for (const a of b.also || []) out += `\n\n# --- game:${a.id}${a.tick ? ' (tick)' : ''}${a.load ? ' (load)' : ''} ---\n` + a.lines.join('\n');
+  return out;
+}
+function renderSnips() {
+  if (!DATA) return;
+  const v = $('ver').value, q = $('q').value.trim().toLowerCase(), en = LANG === 'en';
+  $('cats').innerHTML = [{ id: 'all', ja: L().all, en: L().all }].concat(DATA.categories)
+    .map((c) => `<button class="chip${CAT === c.id ? ' on' : ''}" data-cat="${c.id}">${esc(en ? c.en : c.ja)}</button>`).join('');
+  const shown = DATA.snippets.filter((s) => (CAT === 'all' || s.category === CAT) && s.versions.includes(v) &&
+    (!q || [s.id, s.title_ja, s.title_en, s.desc_ja, s.desc_en, snippetText(s, v)].join(' ').toLowerCase().includes(q)));
+  $('count').textContent = L().n_shown(shown.length, DATA.snippets.length);
+  $('list').innerHTML = shown.length ? shown.map((s) => {
+    const b = resolve(s, v);
+    const meta = [L()['k_' + b.kind]];
+    if (b.tick) meta.push(L().tick); if (b.load) meta.push(L().load);
+    const only = s.versions.length === 1 ? `<span class="only">${esc(L().only(s.versions[0]))}</span>` : '';
+    const helpers = (b.also || []).length ? `<div class="note">${esc(L().helpers)}: ${(b.also).map((a) => '<code>game:' + esc(a.id) + '</code>').join(' ')}</div>` : '';
+    const note = (en ? s.notes_en : s.notes_ja) ? `<div class="note">${esc(en ? s.notes_en : s.notes_ja)}</div>` : '';
+    return `<article class="snip" id="snip-${s.id}"><h4>${esc(en ? s.title_en : s.title_ja)}</h4>
+      <div class="meta">${meta.map((m) => '<span>' + esc(m) + '</span>').join('')}${only}</div>
+      <div>${esc(en ? s.desc_en : s.desc_ja)}</div>
+      <pre>${esc(snippetText(s, v))}</pre>${helpers}${note}
+      <div class="btns"><button class="ghost" data-copy="${s.id}">${esc(L().b_copy)}</button><button data-add="${s.id}">${esc(L().b_add)}</button></div></article>`;
+  }).join('') : `<p class="sub">${esc(L().none)}</p>`;
+}
+function toast(t) { const el = $('toast'); el.textContent = t; el.classList.add('on'); setTimeout(() => el.classList.remove('on'), 1400); }
+document.addEventListener('click', async (e) => {
+  const t = e.target.closest('button'); if (!t) return;
+  if (t.dataset.cat) { CAT = t.dataset.cat; renderSnips(); return; }
+  const id = t.dataset.copy || t.dataset.add; if (!id) return;
+  const s = DATA.snippets.find((x) => x.id === id), v = $('ver').value;
+  if (t.dataset.copy) {
+    const text = snippetText(s, v);
+    try { await navigator.clipboard.writeText(text); } catch (err) {
+      const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
+    }
+    toast(L().copied);
+  } else {
+    const payload = { id: s.id, version: v, kind: s.kind, title: LANG === 'en' ? s.title_en : s.title_ja, lang: LANG,
+                      modules: moduleList(s, v), snippet: resolve(s, v), at: Date.now() };
+    try { localStorage.setItem('cmdlab.pendingSnippet', JSON.stringify(payload)); } catch (err) {}
+    toast(L().added);
+    setTimeout(() => { location.href = '/editor'; }, 300);
+  }
+});
+$('q').addEventListener('input', renderSnips);
+$('ver').addEventListener('change', () => { try { localStorage.setItem('cmdlab_guide_ver', $('ver').value); } catch (e) {} renderSnips(); });
+$('lang').addEventListener('change', () => {
+  LANG = $('lang').value; try { localStorage.setItem('cmdlab_lang', LANG); } catch (e) {}
+  const u = new URL(location.href); u.searchParams.set('lang', LANG); history.replaceState(null, '', u);
+  applyLang();
+});
+
+(async () => {
+  const q = new URLSearchParams(location.search);
+  try { LANG = localStorage.getItem('cmdlab_lang') || 'ja'; } catch (e) {}
+  if (q.get('lang') === 'en' || q.get('lang') === 'ja') LANG = q.get('lang');
+  $('lang').value = LANG;
+  try { const sv = localStorage.getItem('cmdlab_guide_ver'); if (sv) $('ver').value = sv; } catch (e) {}
+  if (q.get('ver')) $('ver').value = q.get('ver');
+  if (q.get('cat')) CAT = q.get('cat');
+  if (q.get('q')) $('q').value = q.get('q');
+  applyLang();
+  for (const url of ['/snippets.json', 'snippets.json']) {
+    try { const r = await fetch(url); if (r.ok) { DATA = await r.json(); break; } } catch (e) {}
+  }
+  renderSnips();
+  if (location.hash) { const el = document.querySelector(location.hash); if (el) { if (el.tagName === 'DETAILS') el.open = true; el.scrollIntoView(); } }
+})();
+</script>
+</body>
+</html>
