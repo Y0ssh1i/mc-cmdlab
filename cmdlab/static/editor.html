@@ -216,6 +216,7 @@ select { max-width:100%; text-overflow:ellipsis; }
 <header>
   <h1>mc-cmdlab <small data-i="subtitle">コマンド設定ページ</small></h1>
   <div class="hright">
+    <a href="/guide" id="lnkGuide" data-i="lnk_guide">コマンド集・使い方</a>
     <a href="/" id="lnkMain" data-i="back_main">← メインページ(サーバー・プレイヤー・1回きりの台本)</a>
     <label class="check"><span data-i="lang">言語</span>
       <select id="lang" style="width:auto"><option value="ja">日本語</option><option value="en">English</option></select></label>
@@ -298,6 +299,7 @@ select { max-width:100%; text-overflow:ellipsis; }
           <button class="mini" id="addFn" data-i="add_fn">+ 関数</button>
           <button class="mini" id="addBl" data-i="add_bl">+ コマンドブロック</button>
           <button class="mini" id="addSt" data-i="add_st">+ プレイヤーの動き</button>
+          <button class="mini" id="addSnip" data-i="add_snip">+ コマンド集から足す</button>
         </div>
       </section>
       <section>
@@ -416,6 +418,7 @@ const I18N = {
     nothing_sel:'左の一覧から部品かシナリオを選んでください。', new_title:'新しいゲーム', new_sc:'シナリオ', new_fn:'新しい関数', new_bl:'新しいコマンドブロック', new_st:'新しい動き',
     eff:'効果 ', below:'名前の下: ', teamside:'チームのサイドバー: ', sounds:'音: ', window:'画面', confirm_new:'今の変更を捨てて新しいプロジェクトにしますか?', confirm_open:'保存していない変更があります。開きますか?',
     sc_steps:(n)=>`${n} 段`, res_ok:(a,b)=>`✓ ${a}/${b}`, res_ng:(a,b)=>`✗ ${a}/${b}`, preview_more:(n)=>`…ほか ${n} 行`,
+    lnk_guide:'コマンド集・使い方', add_snip:'+ コマンド集から足す', snip_added:(n,k)=>`コマンド集「${n}」を足しました(部品 ${k} 個)`, snip_renamed:(a)=>`・ID が重なったので変えました: ${a}`,
     con_title:'コンソール', con_cmd:'コマンド', con_act:'プレイヤーの動き', con_ph:'コマンドを打って Enter(例: say hello)・↑↓で前に打ったもの', con_as_server:'サーバーとして実行', con_as:(n)=>`${n} として実行`,
     con_run:'▶ 実行', con_add:'＋ 部品に足す', con_hist:'これまでに打ったもの', con_hist_empty:'まだ何も打っていません', con_recall:'クリックで入力欄に戻す', con_view:'この画面を見る', con_running:'実行中…',
     con_reply:'サーバーの返事', con_seen:'プレイヤーが見たもの', con_empty:'コマンド(または動き)を入れてください',
@@ -495,6 +498,7 @@ const I18N = {
     nothing_sel:'Select a part or a scenario on the left.', new_title:'New game', new_sc:'Scenario', new_fn:'New function', new_bl:'New command blocks', new_st:'New actions',
     eff:'Effect ', below:'Below names: ', teamside:'Team sidebar: ', sounds:'Sounds: ', window:'Window', confirm_new:'Discard the current changes and start a new project?', confirm_open:'You have unsaved changes. Open anyway?',
     sc_steps:(n)=>`${n} step${n===1?'':'s'}`, res_ok:(a,b)=>`✓ ${a}/${b}`, res_ng:(a,b)=>`✗ ${a}/${b}`, preview_more:(n)=>`...${n} more`,
+    lnk_guide:'Commands & guide', add_snip:'+ From the command sets', snip_added:(n,k)=>`Added set "${n}" (${k} part${k===1?'':'s'})`, snip_renamed:(a)=>` · IDs already used, renamed: ${a}`,
     con_title:'Console', con_cmd:'Command', con_act:'Player action', con_ph:'Type a command and press Enter (e.g. say hello); up/down for earlier ones', con_as_server:'Run as the server', con_as:(n)=>`Run as ${n}`,
     con_run:'▶ Run', con_add:'+ Add to part', con_hist:'History', con_hist_empty:'Nothing typed yet', con_recall:'Click to put it back in the input', con_view:'See this screen', con_running:'Running...',
     con_reply:'Server reply', con_seen:'Players saw', con_empty:'Type a command (or set up an action) first',
@@ -686,7 +690,7 @@ function select(type, id) { SEL = { type, id }; SELBLOCK = 0; if (TAB === 'res')
 function setUrl() {
   try {
     const q = new URLSearchParams(location.search);
-    if (NAME) q.set('project', NAME);
+    if (NAME) { q.set('project', NAME); try { if (NAME !== 'untitled') localStorage.setItem('cmdlab_last_project', NAME); } catch (e) { /* */ } }
     q.delete('module'); q.delete('scenario');
     if (SEL) q.set(SEL.type, SEL.id);
     q.set('lang', LANG());
@@ -1824,9 +1828,10 @@ async function conRun() {
   if (CON_MODE === 'cmd' && e.res && e.res.ok) $('conInput').select();
 }
 function conAdd() {
+  ensureProject();
   const q = conRequest();
   if (!q) { status(t('con_empty'), 'ng'); return; }
-  if (!SEL) { status(t('con_add_sel'), 'ng'); return; }
+  if (!SEL || (SEL.type === 'module' ? !modById(SEL.id) : !scById(SEL.id))) { status(t('con_add_sel'), 'ng'); return; }
   const step = q.req.step ? Object.assign({}, q.req.step) : Object.assign({ run: q.req.command }, q.req.as ? { as: q.req.as } : {});
   if (SEL.type === 'scenario') {
     const sc = scById(SEL.id); sc.steps = sc.steps || []; sc.steps.push(step);
@@ -1878,6 +1883,45 @@ $('btnImport').onclick = async (e) => {
     status(t('imported', name, (j.modules || []).length), 'ok');
   } catch (er) { status(t('err') + er.message, 'ng'); } finally { e.target.disabled = false; }
 };
+
+// ---------------- command sets from the guide page ----------------
+function ensureProject() {
+  if (P) return;
+  P = { version: $('pVer').value || '1.20.1', title: t('new_title'), namespace:'game', player_names:['Alice', 'Bob'],
+    modules:[{ id:'setup', label: t('new_setup'), kind:'function', lines:[] }], scenarios:[{ id:'main', label: t('new_sc') + ' 1', steps:[] }] };
+  NAME = 'untitled'; SEL = { type:'module', id:'setup' }; fillProjectBar(); dirty(true);
+}
+function applyPendingSnippet() {
+  let pend = null;
+  try { pend = JSON.parse(localStorage.getItem('cmdlab.pendingSnippet') || 'null'); } catch (e) { pend = null; }
+  if (!pend) return false;
+  try { localStorage.removeItem('cmdlab.pendingSnippet'); } catch (e) { /* */ }
+  if (!pend.at || Date.now() - pend.at > 10 * 60 * 1000 || !Array.isArray(pend.modules) || !pend.modules.length) return false;
+  ensureProject();
+  const ns = P.namespace || 'game';
+  const taken = new Set(mods().map((m) => m.id));
+  const map = {}; const renamed = [];
+  for (const m of pend.modules) {
+    let id = String(m.id || 'snippet').toLowerCase().replace(/[^a-z0-9_./-]+/g, '_');
+    if (taken.has(id)) { let n = 2; while (taken.has(id + '_' + n)) n++; renamed.push(`${id} → ${id}_${n}`); id = id + '_' + n; }
+    taken.add(id); map[m.id] = id;
+  }
+  // point calls between the added parts at their (new) ids in this project's namespace
+  const fix = (text) => String(text || '').replace(/(function\s+)([a-z0-9_.-]+):([a-z0-9_./-]+)/g, (all, f, n2, id) => map[id] !== undefined ? `${f}${ns}:${map[id]}` : all);
+  const fixSteps = (steps) => (steps || []).map((st) => { const x = JSON.parse(JSON.stringify(st)); if (x.call !== undefined && map[x.call] !== undefined) x.call = map[x.call]; if (typeof x.run === 'string') x.run = fix(x.run); if (x.do === 'command' && x.text) x.text = fix(x.text); return x; });
+  const added = pend.modules.map((m0) => {
+    const m = JSON.parse(JSON.stringify(m0)); m.id = map[m0.id];
+    if (Array.isArray(m.lines)) m.lines = m.lines.map(fix);
+    if (Array.isArray(m.blocks)) m.blocks = m.blocks.map((b) => Object.assign({}, b, b.cmd !== undefined ? { cmd: fix(b.cmd) } : {}));
+    if (Array.isArray(m.steps)) m.steps = fixSteps(m.steps);
+    return m;
+  });
+  P.modules.push(...added); dirty();
+  SEL = { type:'module', id: added[0].id }; SELBLOCK = 0; TAB = 'edit';
+  status(t('snip_added', pend.title || pend.id || '', added.length) + (renamed.length ? t('snip_renamed', renamed.join(', ')) : ''), 'ok');
+  return true;
+}
+$('addSnip').onclick = () => { location.href = '/guide?lang=' + LANG() + '#snippets'; };
 
 // ---------------- render all ----------------
 function applyLang() {
@@ -1941,7 +1985,9 @@ window.addEventListener('beforeunload', (e) => { if (DIRTY) { e.preventDefault()
   document.querySelectorAll('[data-ip]').forEach((el) => { const v = I18N[LANG()][el.dataset.ip]; if (typeof v === 'string') el.placeholder = v; });
   try { const v = await (await fetch('/api/versions')).json(); for (const x of v.supported) $('pVer').appendChild(h('option', { value:x }, x)); } catch (e) { /* */ }
   await loadProjects();
-  const name = q.get('project') || (PROJECTS[0] || {}).name;
+  let lastName = null; try { lastName = localStorage.getItem('cmdlab_last_project'); } catch (e) { /* */ }
+  if (lastName && !PROJECTS.some((x) => x.name === lastName)) lastName = null;
+  const name = q.get('project') || lastName || (PROJECTS[0] || {}).name;
   if (name) { try { await openProject(name); } catch (e) { status(t('err') + e.message, 'ng'); newProject(); } } else newProject();
   if (q.get('module') && modById(q.get('module'))) SEL = { type:'module', id:q.get('module') };
   if (q.get('scenario') && scById(q.get('scenario'))) SEL = { type:'scenario', id:q.get('scenario') };
@@ -1953,6 +1999,7 @@ window.addEventListener('beforeunload', (e) => { if (DIRTY) { e.preventDefault()
   if (q.get('block')) SELBLOCK = (+q.get('block') || 1) - 1;
   if (q.get('open')) { const sc = SEL && SEL.type === 'scenario' ? scById(SEL.id) : (SEL ? modById(SEL.id) : null); const st = sc && (sc.steps || [])[(+q.get('open') || 1) - 1]; if (st) OPEN.add(st); }
   if (q.get('check')) { const sc = scById($('runSc').value) || scens()[0]; if (sc) q.get('check').split(',').forEach((n) => { const st = sc.steps[+n - 1]; if (st) CHECKED.add(st); }); }
+  applyPendingSnippet();
   if (q.get('result') === '1') { try { LAST = await (await fetch('/api/last')).json(); TAB = 'res'; } catch (e) { /* */ } }
   renderAll(); setUrl();
   refreshStatus(); setInterval(refreshStatus, 4000);
