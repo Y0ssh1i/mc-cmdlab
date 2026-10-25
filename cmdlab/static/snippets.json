@@ -1,0 +1,2124 @@
+{
+ "format": 1,
+ "note": "mc-cmdlab snippet library. kind=function: lines (one data pack function); also = helper functions it calls (add them as modules with these ids). kind=blocks: blocks + origin/facing/trigger/expect_success. kind=steps: script steps. variants[version] overrides lines/also/blocks/steps for that version. Functions use the namespace game:.",
+ "categories": [
+  {
+   "id": "teams",
+   "ja": "チーム",
+   "en": "Teams"
+  },
+  {
+   "id": "scoreboard",
+   "ja": "スコアボード",
+   "en": "Scoreboards"
+  },
+  {
+   "id": "timer",
+   "ja": "タイマー",
+   "en": "Timers"
+  },
+  {
+   "id": "message",
+   "ja": "表示・音",
+   "en": "Messages & sounds"
+  },
+  {
+   "id": "flow",
+   "ja": "ゲームの流れ",
+   "en": "Game flow"
+  },
+  {
+   "id": "players",
+   "ja": "プレイヤー・アイテム",
+   "en": "Players & items"
+  },
+  {
+   "id": "pvp",
+   "ja": "PvP",
+   "en": "PvP"
+  },
+  {
+   "id": "tag",
+   "ja": "鬼ごっこ・逃走中",
+   "en": "Tag / Run for money"
+  },
+  {
+   "id": "werewolf",
+   "ja": "人狼",
+   "en": "Werewolf"
+  },
+  {
+   "id": "capture",
+   "ja": "拠点・攻城戦",
+   "en": "Capture / siege"
+  },
+  {
+   "id": "blocks",
+   "ja": "コマンドブロックの型",
+   "en": "Command block patterns"
+  },
+  {
+   "id": "macro",
+   "ja": "マクロ・乱数(1.20.2+)",
+   "en": "Macros & random (1.20.2+)"
+  },
+  {
+   "id": "schedule",
+   "ja": "schedule のループ",
+   "en": "Schedule loops"
+  }
+ ],
+ "snippets": [
+  {
+   "id": "team_two_colors",
+   "category": "teams",
+   "title_ja": "赤と青のチームを作る",
+   "title_en": "Create red and blue teams",
+   "desc_ja": "色・名前の前の印・同士討ちなし・味方の透明が見える設定まで。",
+   "desc_en": "Colors, name prefix, no friendly fire, see invisible teammates.",
+   "versions": [
+    "1.20.1",
+    "1.21.6"
+   ],
+   "kind": "function",
+   "suggest_id": "setup_teams",
+   "load": true,
+   "lines": [
+    "team add red {\"text\":\"赤チーム\",\"color\":\"red\"}",
+    "team add blue {\"text\":\"青チーム\",\"color\":\"blue\"}",
+    "team modify red color red",
+    "team modify blue color blue",
+    "team modify red prefix {\"text\":\"[赤] \",\"color\":\"red\"}",
+    "team modify blue prefix {\"text\":\"[青] \",\"color\":\"blue\"}",
+    "team modify red friendlyFire false",
+    "team modify blue friendlyFire false",
+    "team modify red seeFriendlyInvisibles true",
+    "team modify blue seeFriendlyInvisibles true"
+   ],
+   "notes_ja": "2回目の team add は「既にある」と返るだけで害はありません。",
+   "notes_en": "Running team add twice only says the team already exists."
+  },
+  {
+   "id": "team_even_split",
+   "category": "teams",
+   "title_ja": "全員を赤・青に均等に分ける",
+   "title_en": "Split everyone evenly into red and blue",
+   "desc_ja": "チームに入っていない人を1人ずつ交互に入れ、残りがいる間は自分を呼び直す。",
+   "desc_en": "Puts one unassigned player in each team, then calls itself while someone is left.",
+   "versions": [
+    "1.20.1",
+    "1.21.6"
+   ],
+   "kind": "function",
+   "suggest_id": "assign_even",
+   "lines": [
+    "team join red @r[team=]",
+    "execute if entity @a[team=] run team join blue @r[team=]",
+    "execute if entity @a[team=] run function game:assign_even"
+   ],
+   "notes_ja": "部品の id を assign_even にして保存してください(自分を呼ぶため)。人数が奇数なら赤が1人多くなります。先に team leave @a で全員を外すと分け直せます。",
+   "notes_en": "Save it with module id assign_even (it calls itself). With an odd count red gets one more. Run team leave @a first to re-split."
+  },
+  {
+   "id": "team_random_oni",
+   "category": "teams",
+   "title_ja": "ランダムに1人を鬼、残りを逃げる側に",
+   "title_en": "Pick one random hunter, the rest run",
+   "desc_ja": "@r で1人だけ選び、残り全員を別のチームへ。",
+   "desc_en": "@r picks one player; everyone else joins the other team.",
+   "versions": [
+    "1.20.1",
+    "1.21.6"
+   ],
+   "kind": "function",
+   "lines": [
+    "team add hunter {\"text\":\"鬼\",\"color\":\"dark_red\"}",
+    "team add runner {\"text\":\"逃走者\",\"color\":\"green\"}",
+    "team modify hunter color dark_red",
+    "team modify runner color green",
+    "team leave @a",
+    "team join hunter @r",
+    "team join runner @a[team=]",
+    "tellraw @a [{\"text\":\"鬼は \",\"color\":\"gray\"},{\"selector\":\"@a[team=hunter]\",\"color\":\"dark_red\"}]"
+   ]
+  },
+  {
+   "id": "team_options",
+   "category": "teams",
+   "title_ja": "名札・押し合い・死亡メッセージを隠す",
+   "title_en": "Hide name tags, collisions and death messages",
+   "desc_ja": "隠れんぼや鬼ごっこでよく使うチームの設定。",
+   "desc_en": "Team options often used for hide-and-seek and tag.",
+   "versions": [
+    "1.20.1",
+    "1.21.6"
+   ],
+   "kind": "function",
+   "lines": [
+    "team modify red nametagVisibility never",
+    "team modify red collisionRule never",
+    "team modify red deathMessageVisibility never",
+    "team modify blue nametagVisibility never",
+    "team modify blue collisionRule never",
+    "team modify blue deathMessageVisibility never"
+   ],
+   "notes_ja": "値は never / always が両方の版で同じ書き方です。相手チームだけに隠す値は版で綴りが変わるので、エディタの点検で確かめてください。",
+   "notes_en": "never / always are spelled the same in every version. The 'hide for other teams' value changed spelling between versions, so check it in the editor."
+  },
+  {
+   "id": "team_count",
+   "category": "teams",
+   "title_ja": "チームの人数を数える",
+   "title_en": "Count players in each team",
+   "desc_ja": "execute store result で人数をスコアに入れ、0人なら知らせる。",
+   "desc_en": "Store each team's head count in a score and react when a team is empty.",
+   "versions": [
+    "1.20.1",
+    "1.21.6"
+   ],
+   "kind": "function",
+   "lines": [
+    "scoreboard objectives add game dummy",
+    "execute store result score #red_n game if entity @a[team=red,gamemode=!spectator]",
+    "execute store result score #blue_n game if entity @a[team=blue,gamemode=!spectator]",
+    "execute if score #red_n game matches 0 run tellraw @a {\"text\":\"赤チームは全滅\",\"color\":\"red\"}",
+    "execute if score #blue_n game matches 0 run tellraw @a {\"text\":\"青チームは全滅\",\"color\":\"blue\"}"
+   ]
+  },
+  {
+   "id": "team_reset",
+   "category": "teams",
+   "title_ja": "チームを空にする",
+   "title_en": "Empty the teams",
+   "desc_ja": "試合のあとに全員をチームから外す。",
+   "desc_en": "Remove everyone from every team after a round.",
+   "versions": [
+    "1.20.1",
+    "1.21.6"
+   ],
+   "kind": "function",
+   "lines": [
+    "team leave @a",
+    "team empty red",
+    "team empty blue"
+   ]
+  },
+  {
+   "id": "sb_sidebar",
+   "category": "scoreboard",
+   "title_ja": "右側(サイドバー)に得点を出す",
+   "title_en": "Show points in the sidebar",
+   "desc_ja": "表示名つきの項目を作り、チームの得点を名前つきで並べる。",
+   "desc_en": "An objective with a display name, with team totals as named entries.",
+   "versions": [
+    "1.20.1",
+    "1.21.6"
+   ],
+   "kind": "function",
+   "lines": [
+    "scoreboard objectives add points dummy {\"text\":\"得点\",\"color\":\"gold\"}",
+    "scoreboard objectives setdisplay sidebar points",
+    "scoreboard players set Red points 0",
+    "scoreboard players set Blue points 0",
+    "scoreboard players add Red points 1"
+   ],
+   "notes_ja": "# で始まる名前(#time など)はサイドバーに出ません。見せたいものは Red のように普通の名前にします。",
+   "notes_en": "Names starting with # (like #time) are hidden from the sidebar; use plain names like Red for shown entries."
+  },
+  {
+   "id": "sb_health_below_name",
+   "category": "scoreboard",
+   "title_ja": "名前の下と Tab にハートで体力",
+   "title_en": "Health as hearts below names and in Tab",
+   "desc_ja": "体力の項目を作り、名前の下と Tab 一覧に出す。表示の枠の名前が版で違う。",
+   "desc_en": "A health objective shown below names and in the Tab list. The slot name differs by version.",
+   "versions": [
+    "1.20.1",
+    "1.21.6"
+   ],
+   "kind": "function",
+   "variants": {
+    "1.20.1": {
+     "lines": [
+      "scoreboard objectives add hp health {\"text\":\"❤\",\"color\":\"red\"}",
+      "scoreboard objectives modify hp rendertype hearts",
+      "scoreboard objectives setdisplay belowName hp",
+      "scoreboard objectives setdisplay list hp"
+     ]
+    },
+    "1.21.6": {
+     "lines": [
+      "scoreboard objectives add hp health {\"text\":\"❤\",\"color\":\"red\"}",
+      "scoreboard objectives modify hp rendertype hearts",
+      "scoreboard objectives setdisplay below_name hp",
+      "scoreboard objectives setdisplay list hp"
+     ]
+    }
+   },
+   "notes_ja": "1.20.1 は belowName、1.20.2 以降は below_name。体力は一度ダメージを受けるまで 0 と出ることがあります。",
+   "notes_en": "1.20.1 uses belowName, 1.20.2+ uses below_name. Health may show 0 until the player is hurt once."
+  },
+  {
+   "id": "sb_kill_death",
+   "category": "scoreboard",
+   "title_ja": "キル数・デス数を数える",
+   "title_en": "Count kills and deaths",
+   "desc_ja": "プレイヤーを倒した数と死んだ数を自動で数え、Tab と横に出す。",
+   "desc_en": "Kills and deaths counted by the game, shown in Tab and the sidebar.",
+   "versions": [
+    "1.20.1",
+    "1.21.6"
+   ],
+   "kind": "function",
+   "load": true,
+   "lines": [
+    "scoreboard objectives add kills playerKillCount {\"text\":\"キル\"}",
+    "scoreboard objectives add deaths deathCount {\"text\":\"デス\"}",
+    "scoreboard objectives setdisplay list kills",
+    "scoreboard objectives setdisplay sidebar kills"
+   ]
+  },
+  {
+   "id": "sb_team_sidebar",
+   "category": "scoreboard",
+   "title_ja": "チームごとに違うサイドバー",
+   "title_en": "A different sidebar per team",
+   "desc_ja": "赤チームの人にだけ見えるサイドバーを出す。",
+   "desc_en": "A sidebar only red team members see.",
+   "versions": [
+    "1.20.1",
+    "1.21.6"
+   ],
+   "kind": "function",
+   "lines": [
+    "scoreboard objectives add red_info dummy {\"text\":\"赤チームの情報\",\"color\":\"red\"}",
+    "scoreboard objectives setdisplay sidebar.team.red red_info",
+    "scoreboard objectives add blue_info dummy {\"text\":\"青チームの情報\",\"color\":\"blue\"}",
+    "scoreboard objectives setdisplay sidebar.team.blue blue_info"
+   ]
+  },
+  {
+   "id": "sb_display_name_blank",
+   "category": "scoreboard",
+   "title_ja": "数字を隠す・行の名前を変える(1.20.3+)",
+   "title_en": "Hide numbers, rename lines (1.20.3+)",
+   "desc_ja": "サイドバーを文字だけの掲示板にする。",
+   "desc_en": "Turn the sidebar into a text-only board.",
+   "versions": [
+    "1.21.6"
+   ],
+   "kind": "function",
+   "lines": [
+    "scoreboard objectives add board dummy {\"text\":\"ミッション\",\"color\":\"gold\"}",
+    "scoreboard objectives setdisplay sidebar board",
+    "scoreboard objectives modify board numberformat blank",
+    "scoreboard players set line1 board 2",
+    "scoreboard players display name line1 board {\"text\":\"ボタンを押せ\",\"color\":\"yellow\"}",
+    "scoreboard players set line2 board 1",
+    "scoreboard players display name line2 board {\"text\":\"残り 3 個\",\"color\":\"white\"}"
+   ],
+   "notes_ja": "numberformat と display name は 1.20.3 から。1.20.1 では使えません。",
+   "notes_en": "numberformat and display name start in 1.20.3; not in 1.20.1."
+  },
+  {
+   "id": "sb_math",
+   "category": "scoreboard",
+   "title_ja": "スコアの計算(定数・割り算・余り)",
+   "title_en": "Score math (constants, divide, modulo)",
+   "desc_ja": "秒を分と秒に分ける。定数は #20 のような名前に入れておく。",
+   "desc_en": "Split seconds into minutes and seconds; keep constants in names like #60.",
+   "versions": [
+    "1.20.1",
+    "1.21.6"
+   ],
+   "kind": "function",
+   "lines": [
+    "scoreboard objectives add game dummy",
+    "scoreboard objectives add const dummy",
+    "scoreboard players set #60 const 60",
+    "scoreboard players set #time game 125",
+    "scoreboard players operation #min game = #time game",
+    "scoreboard players operation #min game /= #60 const",
+    "scoreboard players operation #sec game = #time game",
+    "scoreboard players operation #sec game %= #60 const",
+    "scoreboard players get #min game",
+    "scoreboard players get #sec game"
+   ]
+  },
+  {
+   "id": "timer_ticks_to_seconds",
+   "category": "timer",
+   "title_ja": "tick を数えて1秒ごとに減らす",
+   "title_en": "Count ticks, take one second off every 20",
+   "desc_ja": "毎 tick 呼ぶと、20 tick ごとに残り時間(#time)が1減る。",
+   "desc_en": "Called every tick, it lowers the time left (#time) once per 20 ticks.",
+   "versions": [
+    "1.20.1",
+    "1.21.6"
+   ],
+   "kind": "function",
+   "suggest_id": "timer_tick",
+   "tick": true,
+   "lines": [
+    "execute if score #state game matches 2 run scoreboard players add #ticks game 1",
+    "execute if score #ticks game matches 20.. run scoreboard players remove #time game 1",
+    "execute if score #ticks game matches 20.. run scoreboard players set #ticks game 0",
+    "execute if score #state game matches 2 if score #time game matches ..0 run title @a title {\"text\":\"時間切れ\",\"color\":\"red\"}",
+    "execute if score #state game matches 2 if score #time game matches ..0 run scoreboard players set #state game 3"
+   ],
+   "notes_ja": "前もって scoreboard objectives add game dummy と #state=2・#time=秒数を入れておきます。",
+   "notes_en": "Create the objective game and set #state to 2 and #time to the seconds first."
+  },
+  {
+   "id": "timer_bossbar",
+   "category": "timer",
+   "title_ja": "ボスバーで残り時間",
+   "title_en": "Time left on a boss bar",
+   "desc_ja": "ボスバーを作り、毎 tick スコアの値を写す。",
+   "desc_en": "Create a boss bar and copy the score into it every tick.",
+   "versions": [
+    "1.20.1",
+    "1.21.6"
+   ],
+   "kind": "function",
+   "load": true,
+   "lines": [
+    "bossbar add game:time {\"text\":\"残り時間\"}",
+    "bossbar set game:time players @a",
+    "bossbar set game:time max 300",
+    "bossbar set game:time color yellow",
+    "bossbar set game:time style notched_10",
+    "bossbar set game:time visible true"
+   ],
+   "also": [
+    {
+     "id": "bossbar_tick",
+     "label_ja": "ボスバーを更新(毎 tick)",
+     "label_en": "Update the boss bar (every tick)",
+     "tick": true,
+     "lines": [
+      "execute store result bossbar game:time value run scoreboard players get #time game",
+      "execute if score #time game matches ..30 run bossbar set game:time color red"
+     ]
+    }
+   ],
+   "notes_ja": "max は試合の秒数に合わせます。後から入ったプレイヤーにも見せるなら players @a を毎回入れ直します。",
+   "notes_en": "Set max to the round length. Re-run players @a to show it to players who join later."
+  },
+  {
+   "id": "timer_title_321",
+   "category": "timer",
+   "title_ja": "3・2・1 のカウントダウン",
+   "title_en": "3-2-1 countdown",
+   "desc_ja": "#state=1 の間、毎 tick #cd を減らし、60・40・20 tick で数字と音、0 で開始。",
+   "desc_en": "While #state is 1, lower #cd every tick; show 3, 2, 1 with a sound and start at 0.",
+   "versions": [
+    "1.20.1",
+    "1.21.6"
+   ],
+   "kind": "function",
+   "suggest_id": "countdown_tick",
+   "tick": true,
+   "lines": [
+    "execute if score #state game matches 1 run scoreboard players remove #cd game 1",
+    "execute if score #state game matches 1 if score #cd game matches 60 run title @a title {\"text\":\"3\",\"color\":\"green\"}",
+    "execute if score #state game matches 1 if score #cd game matches 40 run title @a title {\"text\":\"2\",\"color\":\"yellow\"}",
+    "execute if score #state game matches 1 if score #cd game matches 20 run title @a title {\"text\":\"1\",\"color\":\"red\"}",
+    "execute if score #state game matches 1 if score #cd game matches 20..60 run execute as @a at @s run playsound minecraft:block.note_block.pling master @s ~ ~ ~ 1 1",
+    "execute if score #state game matches 1 if score #cd game matches 0 run title @a title {\"text\":\"スタート！\",\"color\":\"gold\"}",
+    "execute if score #state game matches 1 if score #cd game matches 0 run execute as @a at @s run playsound minecraft:entity.player.levelup master @s ~ ~ ~ 1 1",
+    "execute if score #state game matches 1 if score #cd game matches 0 run scoreboard players set #state game 2"
+   ],
+   "also": [
+    {
+     "id": "countdown_start",
+     "label_ja": "カウントダウンを始める",
+     "label_en": "Start the countdown",
+     "lines": [
+      "scoreboard objectives add game dummy",
+      "title @a times 0 20 5",
+      "scoreboard players set #cd game 61",
+      "scoreboard players set #state game 1"
+     ]
+    }
+   ],
+   "notes_ja": "音の行は 20〜60 の毎 tick 鳴るので、気になれば数字の行と同じく 60・40・20 に分けます。",
+   "notes_en": "The sound line fires on every tick from 20 to 60; split it into 60/40/20 like the title lines if you prefer."
+  },
+  {
+   "id": "timer_mmss_actionbar",
+   "category": "timer",
+   "title_ja": "アクションバーに 分:秒",
+   "title_en": "m:ss in the action bar",
+   "desc_ja": "#time を分と秒に分け、秒が1桁なら0を付けて出す。",
+   "desc_en": "Split #time into minutes and seconds, padding seconds with 0.",
+   "versions": [
+    "1.20.1",
+    "1.21.6"
+   ],
+   "kind": "function",
+   "tick": true,
+   "lines": [
+    "scoreboard players set #60 const 60",
+    "scoreboard players operation #min game = #time game",
+    "scoreboard players operation #min game /= #60 const",
+    "scoreboard players operation #sec game = #time game",
+    "scoreboard players operation #sec game %= #60 const",
+    "execute if score #sec game matches 10.. run title @a actionbar [{\"text\":\"残り \"},{\"score\":{\"name\":\"#min\",\"objective\":\"game\"}},{\"text\":\":\"},{\"score\":{\"name\":\"#sec\",\"objective\":\"game\"}}]",
+    "execute if score #sec game matches ..9 run title @a actionbar [{\"text\":\"残り \"},{\"score\":{\"name\":\"#min\",\"objective\":\"game\"}},{\"text\":\":0\"},{\"score\":{\"name\":\"#sec\",\"objective\":\"game\"}}]"
+   ],
+   "notes_ja": "objective game と const を先に作っておきます。",
+   "notes_en": "Create the objectives game and const first."
+  },
+  {
+   "id": "msg_title_set",
+   "category": "message",
+   "title_ja": "タイトル・サブタイトルを出す",
+   "title_en": "Show a title and subtitle",
+   "desc_ja": "表示時間を決め、サブタイトル→タイトルの順に送る。",
+   "desc_en": "Set the timing, then send the subtitle before the title.",
+   "versions": [
+    "1.20.1",
+    "1.21.6"
+   ],
+   "kind": "function",
+   "lines": [
+    "title @a times 10 60 20",
+    "title @a subtitle {\"text\":\"最後の1人になれ\",\"color\":\"gray\"}",
+    "title @a title {\"text\":\"バトル開始\",\"color\":\"gold\",\"bold\":true}"
+   ],
+   "notes_ja": "タイトルを送った瞬間に画面に出るので、サブタイトルは先に送ります。times は tick(フェードイン・表示・フェードアウト)。",
+   "notes_en": "The title appears the moment it is sent, so send the subtitle first. times is in ticks (fade in, stay, fade out)."
+  },
+  {
+   "id": "msg_tellraw_scores",
+   "category": "message",
+   "title_ja": "チャットにスコアと名前を出す",
+   "title_en": "Chat with scores and player names",
+   "desc_ja": "selector で名前、score で数字を文章に混ぜる。@s は execute as の相手。",
+   "desc_en": "Mix names (selector) and numbers (score) into chat; @s is the execute as target.",
+   "versions": [
+    "1.20.1",
+    "1.21.6"
+   ],
+   "kind": "function",
+   "lines": [
+    "scoreboard objectives add points dummy",
+    "scoreboard objectives add kills playerKillCount",
+    "tellraw @a [{\"text\":\"赤チームの得点: \"},{\"score\":{\"name\":\"Red\",\"objective\":\"points\"},\"color\":\"gold\"}]",
+    "tellraw @a [{\"selector\":\"@a[team=red]\",\"color\":\"red\"},{\"text\":\" が勝利！\"}]",
+    "execute as @a run tellraw @s [{\"text\":\"あなたのキル数: \"},{\"score\":{\"name\":\"@s\",\"objective\":\"kills\"},\"color\":\"yellow\"}]"
+   ]
+  },
+  {
+   "id": "msg_actionbar_team",
+   "category": "message",
+   "title_ja": "チームごとにアクションバー",
+   "title_en": "Action bar per team",
+   "desc_ja": "チームで違う一言を画面の下に出し続ける。",
+   "desc_en": "Keep a different line above the hotbar for each team.",
+   "versions": [
+    "1.20.1",
+    "1.21.6"
+   ],
+   "kind": "function",
+   "tick": true,
+   "lines": [
+    "title @a[team=hunter] actionbar {\"text\":\"逃走者を捕まえろ\",\"color\":\"dark_red\"}",
+    "title @a[team=runner] actionbar {\"text\":\"ハンターから逃げろ\",\"color\":\"green\"}",
+    "title @a[team=jail] actionbar {\"text\":\"牢屋で待機中\",\"color\":\"red\"}"
+   ]
+  },
+  {
+   "id": "msg_sounds",
+   "category": "message",
+   "title_ja": "よく使う効果音",
+   "title_en": "Common sound effects",
+   "desc_ja": "各プレイヤーの位置で鳴らす。名前だけでテストでき、聞こえたかは heard で確かめられる。",
+   "desc_en": "Played at each player's position. Check that it reached a player with the heard check.",
+   "versions": [
+    "1.20.1",
+    "1.21.6"
+   ],
+   "kind": "function",
+   "lines": [
+    "# 開始・レベルアップ",
+    "execute as @a at @s run playsound minecraft:entity.player.levelup master @s ~ ~ ~ 1 1",
+    "# カウントダウン(高い音)",
+    "execute as @a at @s run playsound minecraft:block.note_block.pling master @s ~ ~ ~ 1 2",
+    "# 捕まった・失敗",
+    "execute as @a at @s run playsound minecraft:block.anvil.land master @s ~ ~ ~ 1 1",
+    "# 不気味な警告",
+    "execute as @a at @s run playsound minecraft:entity.wither.spawn master @s ~ ~ ~ 1 1",
+    "# 勝利",
+    "execute as @a at @s run playsound minecraft:ui.toast.challenge_complete master @s ~ ~ ~ 1 1",
+    "# お金が入った",
+    "execute as @a at @s run playsound minecraft:entity.experience_orb.pickup master @s ~ ~ ~ 1 1"
+   ],
+   "notes_ja": "テストのプレイヤーには音は聞こえず、どの音名が届いたかだけが記録されます。",
+   "notes_en": "Test players do not hear audio; only the sound name that reached them is recorded."
+  },
+  {
+   "id": "msg_click_vote",
+   "category": "message",
+   "title_ja": "押せる文字で投票させる",
+   "title_en": "Clickable chat buttons for voting",
+   "desc_ja": "チャットの [賛成] [反対] を押すと /trigger が走る。書き方が 1.21.5 で変わった。",
+   "desc_en": "Clicking [Yes] / [No] in chat runs /trigger. The syntax changed in 1.21.5.",
+   "versions": [
+    "1.20.1",
+    "1.21.6"
+   ],
+   "kind": "function",
+   "variants": {
+    "1.20.1": {
+     "lines": [
+      "scoreboard objectives add vote trigger",
+      "scoreboard players enable @a vote",
+      "tellraw @a [{\"text\":\"[賛成]\",\"color\":\"green\",\"clickEvent\":{\"action\":\"run_command\",\"value\":\"/trigger vote set 1\"},\"hoverEvent\":{\"action\":\"show_text\",\"contents\":\"賛成に投票\"}},{\"text\":\"  \"},{\"text\":\"[反対]\",\"color\":\"red\",\"clickEvent\":{\"action\":\"run_command\",\"value\":\"/trigger vote set 2\"},\"hoverEvent\":{\"action\":\"show_text\",\"contents\":\"反対に投票\"}}]"
+     ]
+    },
+    "1.21.6": {
+     "lines": [
+      "scoreboard objectives add vote trigger",
+      "scoreboard players enable @a vote",
+      "tellraw @a [{text:\"[賛成]\",color:\"green\",click_event:{action:\"run_command\",command:\"trigger vote set 1\"},hover_event:{action:\"show_text\",value:\"賛成に投票\"}},{text:\"  \"},{text:\"[反対]\",color:\"red\",click_event:{action:\"run_command\",command:\"trigger vote set 2\"},hover_event:{action:\"show_text\",value:\"反対に投票\"}}]"
+     ]
+    }
+   },
+   "notes_ja": "1.20.1 は JSON の clickEvent / hoverEvent、1.21.5 以降は SNBT の click_event(command)/ hover_event(value)。",
+   "notes_en": "1.20.1 uses JSON clickEvent / hoverEvent; 1.21.5+ uses SNBT click_event (command) / hover_event (value)."
+  },
+  {
+   "id": "flow_load",
+   "category": "flow",
+   "title_ja": "読み込み時の準備(load)",
+   "title_en": "Setup on load",
+   "desc_ja": "データパックを読み込んだときに1回だけ動く。項目・定数・ゲームルール。",
+   "desc_en": "Runs once when the pack loads: objectives, constants, game rules.",
+   "versions": [
+    "1.20.1",
+    "1.21.6"
+   ],
+   "kind": "function",
+   "suggest_id": "load",
+   "load": true,
+   "lines": [
+    "scoreboard objectives add game dummy",
+    "scoreboard objectives add const dummy",
+    "scoreboard players set #20 const 20",
+    "scoreboard players set #60 const 60",
+    "execute unless score #state game matches 0.. run scoreboard players set #state game 0",
+    "gamerule doImmediateRespawn true",
+    "gamerule announceAdvancements false",
+    "gamerule doMobSpawning false",
+    "tellraw @a {\"text\":\"ゲームを読み込みました\",\"color\":\"green\"}"
+   ],
+   "notes_ja": "#state が既にあれば上書きしないので、/reload しても試合が止まりません。",
+   "notes_en": "#state is only set when missing, so /reload does not reset a running round."
+  },
+  {
+   "id": "flow_state_machine",
+   "category": "flow",
+   "title_ja": "#state で場面を切り替える(毎 tick)",
+   "title_en": "Switch phases with #state (every tick)",
+   "desc_ja": "0=ロビー 1=カウントダウン 2=試合中 3=終了。場面ごとの関数だけを呼ぶ。",
+   "desc_en": "0 lobby, 1 countdown, 2 playing, 3 ended. Only the current phase's function runs.",
+   "versions": [
+    "1.20.1",
+    "1.21.6"
+   ],
+   "kind": "function",
+   "suggest_id": "tick",
+   "tick": true,
+   "lines": [
+    "# #state game: 0=ロビー 1=カウントダウン 2=試合中 3=終了",
+    "execute if score #state game matches 0 run function game:lobby_tick",
+    "execute if score #state game matches 1 run function game:countdown_tick",
+    "execute if score #state game matches 2 run function game:play_tick"
+   ],
+   "also": [
+    {
+     "id": "lobby_tick",
+     "label_ja": "ロビー中(毎 tick)",
+     "label_en": "Lobby (every tick)",
+     "lines": [
+      "title @a actionbar {\"text\":\"ロビーで待機中\",\"color\":\"gray\"}"
+     ]
+    },
+    {
+     "id": "countdown_tick",
+     "label_ja": "カウントダウン中(毎 tick)",
+     "label_en": "Countdown (every tick)",
+     "lines": [
+      "scoreboard players remove #cd game 1",
+      "execute if score #cd game matches ..0 run scoreboard players set #state game 2"
+     ]
+    },
+    {
+     "id": "play_tick",
+     "label_ja": "試合中(毎 tick)",
+     "label_en": "Playing (every tick)",
+     "lines": [
+      "scoreboard players add #ticks game 1"
+     ]
+    }
+   ],
+   "notes_ja": "呼ぶ関数が無いとデータパックの読み込みで失敗するので、中身が空でも3つとも作ります。",
+   "notes_en": "A call to a missing function makes the pack fail to load, so create all three even if empty."
+  },
+  {
+   "id": "flow_start",
+   "category": "flow",
+   "title_ja": "試合を始める",
+   "title_en": "Start a round",
+   "desc_ja": "得点を戻し、チームの場所へ移し、持ち物と効果を整えてから開始を知らせる。",
+   "desc_en": "Reset scores, move teams to their spawns, set items and effects, announce the start.",
+   "versions": [
+    "1.20.1",
+    "1.21.6"
+   ],
+   "kind": "function",
+   "suggest_id": "start",
+   "lines": [
+    "scoreboard players set #state game 2",
+    "scoreboard players set #time game 300",
+    "scoreboard players set #ticks game 0",
+    "scoreboard players set Red points 0",
+    "scoreboard players set Blue points 0",
+    "tp @a[team=red] 20 -60 0",
+    "tp @a[team=blue] -20 -60 0",
+    "spawnpoint @a[team=red] 20 -60 0",
+    "spawnpoint @a[team=blue] -20 -60 0",
+    "gamemode adventure @a",
+    "clear @a",
+    "effect clear @a",
+    "effect give @a minecraft:saturation infinite 0 true",
+    "title @a title {\"text\":\"スタート\",\"color\":\"gold\"}",
+    "execute as @a at @s run playsound minecraft:entity.player.levelup master @s ~ ~ ~ 1 1"
+   ]
+  },
+  {
+   "id": "flow_end",
+   "category": "flow",
+   "title_ja": "試合を終える",
+   "title_en": "End a round",
+   "desc_ja": "勝ちを知らせ、全員を見る側にし、10秒後に元に戻す予約をする。",
+   "desc_en": "Announce the result, make everyone watch, and schedule a reset in 10 seconds.",
+   "versions": [
+    "1.20.1",
+    "1.21.6"
+   ],
+   "kind": "function",
+   "suggest_id": "end",
+   "lines": [
+    "scoreboard players set #state game 3",
+    "execute if score Red points > Blue points run title @a title {\"text\":\"赤チームの勝利\",\"color\":\"red\"}",
+    "execute if score Blue points > Red points run title @a title {\"text\":\"青チームの勝利\",\"color\":\"blue\"}",
+    "execute if score Red points = Blue points run title @a title {\"text\":\"引き分け\",\"color\":\"white\"}",
+    "execute as @a at @s run playsound minecraft:ui.toast.challenge_complete master @s ~ ~ ~ 1 1",
+    "gamemode spectator @a",
+    "schedule function game:reset 10s"
+   ],
+   "also": [
+    {
+     "id": "reset",
+     "label_ja": "元に戻す",
+     "label_en": "Reset",
+     "lines": [
+      "scoreboard players set #state game 0",
+      "team leave @a",
+      "scoreboard players reset * kills",
+      "clear @a",
+      "effect clear @a",
+      "gamemode adventure @a",
+      "tp @a 0 -60 0",
+      "kill @e[type=item]",
+      "tellraw @a {\"text\":\"ロビーに戻りました\",\"color\":\"gray\"}"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "flow_lobby_button",
+   "category": "flow",
+   "title_ja": "ロビーの開始ボタン(コマンドブロック)",
+   "title_en": "Lobby start button (command blocks)",
+   "desc_ja": "上にボタンの付いたインパルスから、チェーンで続けて動かす。",
+   "desc_en": "An impulse block with a button on top, followed by chain blocks.",
+   "versions": [
+    "1.20.1",
+    "1.21.6"
+   ],
+   "kind": "blocks",
+   "origin": [
+    5,
+    -60,
+    5
+   ],
+   "facing": "east",
+   "trigger": "button",
+   "expect_success": false,
+   "blocks": [
+    {
+     "type": "impulse",
+     "cmd": "scoreboard players set #state game 1"
+    },
+    {
+     "type": "chain",
+     "cmd": "tellraw @a {\"text\":\"ボタンが押されました。まもなく開始\",\"color\":\"yellow\"}"
+    },
+    {
+     "type": "chain",
+     "cmd": "execute as @a at @s run playsound minecraft:block.note_block.pling master @s ~ ~ ~ 1 1"
+    }
+   ],
+   "notes_ja": "1つ目を function game:start に替えるのがふつうです。押す動きは「プレイヤーの動き」の use_block(ボタンの座標は origin の1つ上)。",
+   "notes_en": "Usually the first block is function game:start. To press it, use the use_block action on the block above origin."
+  },
+  {
+   "id": "flow_pressure_plate",
+   "category": "flow",
+   "title_ja": "感圧板を踏んだら開始",
+   "title_en": "Start when someone steps on a pressure plate",
+   "desc_ja": "インパルスの上に感圧板を置き、テストのプレイヤーを歩かせて踏ませる。",
+   "desc_en": "Put a pressure plate on an impulse block and walk a test player onto it.",
+   "versions": [
+    "1.20.1",
+    "1.21.6"
+   ],
+   "kind": "steps",
+   "steps": [
+    {
+     "blocks": [
+      {
+       "type": "impulse",
+       "cmd": "title @a title {\"text\":\"スタート\",\"color\":\"gold\"}"
+      },
+      {
+       "type": "chain",
+       "cmd": "execute as @a at @s run playsound minecraft:entity.player.levelup master @s ~ ~ ~ 1 1"
+      }
+     ],
+     "origin": [
+      8,
+      -60,
+      8
+     ],
+     "trigger": "none",
+     "expect_success": false
+    },
+    {
+     "run": "setblock 8 -59 8 minecraft:stone_pressure_plate"
+    },
+    {
+     "player": "Alice",
+     "do": "goto",
+     "x": 8,
+     "y": -59,
+     "z": 8,
+     "wait": 1,
+     "expect": {
+      "seen_by": "Alice",
+      "seen_contains": "スタート"
+     }
+    }
+   ],
+   "notes_ja": "感圧板は真下のブロックに動力を送るので、インパルスがそのまま動きます。trigger を none にして、置いた時点では動かないようにしています。",
+   "notes_en": "A pressure plate powers the block under it, so the impulse block fires. trigger none keeps it from running when placed."
+  },
+  {
+   "id": "flow_area_detect",
+   "category": "flow",
+   "title_ja": "決まった場所に入ったら(リピート)",
+   "title_en": "React when someone enters a spot (repeat)",
+   "desc_ja": "感圧板を使わず、座標の箱に人がいるかを常時調べる。",
+   "desc_en": "No plate: an always-active repeat checks a box of coordinates.",
+   "versions": [
+    "1.20.1",
+    "1.21.6"
+   ],
+   "kind": "blocks",
+   "origin": [
+    12,
+    -60,
+    5
+   ],
+   "facing": "east",
+   "expect_success": false,
+   "blocks": [
+    {
+     "type": "repeat",
+     "auto": true,
+     "cmd": "execute as @a[x=12,y=-60,z=10,dx=2,dy=2,dz=2,tag=!goal] run tag @s add goal"
+    },
+    {
+     "type": "chain",
+     "conditional": true,
+     "cmd": "tellraw @a [{\"selector\":\"@a[tag=goal]\",\"color\":\"gold\"},{\"text\":\" がゴールしました\"}]"
+    }
+   ],
+   "notes_ja": "tag=!goal で1人1回だけ反応します。終わったら tag @a remove goal。",
+   "notes_en": "tag=!goal makes it fire once per player. Clear it with tag @a remove goal."
+  },
+  {
+   "id": "pl_tp_spawn",
+   "category": "players",
+   "title_ja": "スポーン地点へ移す・復活地点を決める",
+   "title_en": "Teleport to spawn and set respawn points",
+   "desc_ja": "全員を集め、死んだときに戻る場所も決める。",
+   "desc_en": "Gather everyone and set where they respawn.",
+   "versions": [
+    "1.20.1",
+    "1.21.6"
+   ],
+   "kind": "function",
+   "lines": [
+    "setworldspawn 0 -60 0",
+    "tp @a 0 -60 0",
+    "spawnpoint @a 0 -60 0",
+    "tp @a[team=red] 20 -60 0 facing 0 -60 0",
+    "tp @a[team=blue] -20 -60 0 facing 0 -60 0"
+   ]
+  },
+  {
+   "id": "pl_jail",
+   "category": "players",
+   "title_ja": "牢屋に入れて出られなくする",
+   "title_en": "Jail players and keep them inside",
+   "desc_ja": "牢屋チームの人が箱の外に出たら戻す(毎 tick)。",
+   "desc_en": "Every tick, send jail team members back if they leave the box.",
+   "versions": [
+    "1.20.1",
+    "1.21.6"
+   ],
+   "kind": "function",
+   "tick": true,
+   "lines": [
+    "execute as @a[team=jail] unless entity @s[x=27,y=-61,z=27,dx=6,dy=5,dz=6] run tp @s 30 -60 30"
+   ],
+   "also": [
+    {
+     "id": "jail_build",
+     "label_ja": "牢屋を作る",
+     "label_en": "Build the jail",
+     "lines": [
+      "fill 26 -61 26 34 -56 34 minecraft:glass hollow",
+      "fill 27 -61 27 33 -61 33 minecraft:stone",
+      "team add jail {\"text\":\"確保\",\"color\":\"red\"}",
+      "team modify jail color red"
+     ]
+    }
+   ],
+   "notes_ja": "dx/dy/dz の箱は (x,y,z) から +dx…まで。牢屋の中から壊されないよう adventure にします。",
+   "notes_en": "The dx/dy/dz box spans from (x,y,z) to +dx and so on. Use adventure mode so the walls cannot be broken."
+  },
+  {
+   "id": "pl_gamemode_effects",
+   "category": "players",
+   "title_ja": "ゲームモードと効果",
+   "title_en": "Game mode and effects",
+   "desc_ja": "壊せない・お腹が減らない・鬼だけ速く光る、などの定番。",
+   "desc_en": "Common setup: no block breaking, no hunger, hunters fast and glowing.",
+   "versions": [
+    "1.20.1",
+    "1.21.6"
+   ],
+   "kind": "function",
+   "lines": [
+    "gamemode adventure @a",
+    "effect give @a minecraft:saturation infinite 0 true",
+    "effect give @a[team=hunter] minecraft:speed infinite 1 true",
+    "effect give @a[team=hunter] minecraft:glowing infinite 0 true",
+    "effect give @a minecraft:resistance 5 255 true",
+    "effect clear @a[team=runner] minecraft:glowing"
+   ],
+   "notes_ja": "infinite は 1.19.4 から使えます。最後の true は粒を隠す指定。",
+   "notes_en": "infinite works since 1.19.4. The final true hides particles."
+  },
+  {
+   "id": "pl_freeze",
+   "category": "players",
+   "title_ja": "その場で動けなくする/戻す",
+   "title_en": "Freeze players / unfreeze",
+   "desc_ja": "カウントダウン中に動けなくする。1.20.1 は効果、1.21.x は属性で止める。",
+   "desc_en": "Hold players during a countdown: effects in 1.20.1, attributes in 1.21.x.",
+   "versions": [
+    "1.20.1",
+    "1.21.6"
+   ],
+   "kind": "function",
+   "variants": {
+    "1.20.1": {
+     "lines": [
+      "effect give @a minecraft:slowness infinite 255 true",
+      "effect give @a minecraft:jump_boost infinite 250 true"
+     ],
+     "also": [
+      {
+       "id": "unfreeze",
+       "label_ja": "動けるように戻す",
+       "label_en": "Unfreeze",
+       "lines": [
+        "effect clear @a minecraft:slowness",
+        "effect clear @a minecraft:jump_boost"
+       ]
+      }
+     ]
+    },
+    "1.21.6": {
+     "lines": [
+      "execute as @a run attribute @s minecraft:movement_speed base set 0",
+      "execute as @a run attribute @s minecraft:jump_strength base set 0"
+     ],
+     "also": [
+      {
+       "id": "unfreeze",
+       "label_ja": "動けるように戻す",
+       "label_en": "Unfreeze",
+       "lines": [
+        "execute as @a run attribute @s minecraft:movement_speed base set 0.1",
+        "execute as @a run attribute @s minecraft:jump_strength base set 0.42"
+       ]
+      }
+     ]
+    }
+   },
+   "notes_ja": "jump_boost 250 は内部で負の値になり、跳べなくなる昔からの技です。属性の名前は 1.21.2 で generic. が外れました。",
+   "notes_en": "jump_boost 250 wraps to a negative level, which stops jumping. Attribute names lost the generic. prefix in 1.21.2."
+  },
+  {
+   "id": "pl_spectator_on_death",
+   "category": "players",
+   "title_ja": "死んだら観戦にする",
+   "title_en": "Spectator on death",
+   "desc_ja": "デス数が増えた人を観戦モードにして、数を戻す(毎 tick)。",
+   "desc_en": "Every tick, players whose death count rose become spectators.",
+   "versions": [
+    "1.20.1",
+    "1.21.6"
+   ],
+   "kind": "function",
+   "tick": true,
+   "lines": [
+    "scoreboard objectives add died deathCount",
+    "execute as @a[scores={died=1..}] run gamemode spectator @s",
+    "execute as @a[scores={died=1..}] run title @s title {\"text\":\"脱落\",\"color\":\"red\"}",
+    "scoreboard players reset @a[scores={died=1..}] died"
+   ],
+   "notes_ja": "1行目の objectives add は load に移すと毎 tick の無駄がありません。gamerule doImmediateRespawn true と組み合わせます。",
+   "notes_en": "Move the objectives add line to load to avoid running it every tick. Pair it with gamerule doImmediateRespawn true."
+  },
+  {
+   "id": "pl_kit",
+   "category": "players",
+   "title_ja": "持ち物を配る(壊れない剣・弓・色付き防具)",
+   "title_en": "Give a kit (unbreakable sword, bow, dyed armor)",
+   "desc_ja": "アイテムの書き方が 1.20.5 で NBT からコンポーネントに変わった代表例。",
+   "desc_en": "The classic example of item NBT (1.20.1) vs item components (1.20.5+).",
+   "versions": [
+    "1.20.1",
+    "1.21.6"
+   ],
+   "kind": "function",
+   "variants": {
+    "1.20.1": {
+     "lines": [
+      "clear @a",
+      "give @a minecraft:iron_sword{Unbreakable:1b} 1",
+      "give @a minecraft:bow{Unbreakable:1b,Enchantments:[{id:\"minecraft:infinity\",lvl:1s}]} 1",
+      "give @a minecraft:arrow 1",
+      "give @a minecraft:cooked_beef 16",
+      "item replace entity @a[team=red] armor.chest with minecraft:leather_chestplate{display:{color:16711680},Unbreakable:1b} 1",
+      "item replace entity @a[team=blue] armor.chest with minecraft:leather_chestplate{display:{color:255},Unbreakable:1b} 1"
+     ]
+    },
+    "1.21.6": {
+     "lines": [
+      "clear @a",
+      "give @a minecraft:iron_sword[unbreakable={}] 1",
+      "give @a minecraft:bow[unbreakable={},enchantments={\"minecraft:infinity\":1}] 1",
+      "give @a minecraft:arrow 1",
+      "give @a minecraft:cooked_beef 16",
+      "item replace entity @a[team=red] armor.chest with minecraft:leather_chestplate[dyed_color=16711680,unbreakable={}] 1",
+      "item replace entity @a[team=blue] armor.chest with minecraft:leather_chestplate[dyed_color=255,unbreakable={}] 1"
+     ]
+    }
+   },
+   "notes_ja": "色は 10進の RGB(赤 16711680・青 255)。1.21.5 から enchantments と dyed_color の書き方がさらに短くなりました。",
+   "notes_en": "Colors are decimal RGB (red 16711680, blue 255). enchantments and dyed_color got shorter in 1.21.5."
+  },
+  {
+   "id": "pl_named_item",
+   "category": "players",
+   "title_ja": "名前と説明つきのアイテム",
+   "title_en": "An item with a name and lore",
+   "desc_ja": "鬼だけが持つ「確保の棒」のような特別なアイテム。",
+   "desc_en": "A special item such as the hunter's catching stick.",
+   "versions": [
+    "1.20.1",
+    "1.21.6"
+   ],
+   "kind": "function",
+   "variants": {
+    "1.20.1": {
+     "lines": [
+      "give @a[team=hunter] minecraft:stick{display:{Name:'{\"text\":\"確保の棒\",\"color\":\"gold\",\"italic\":false}',Lore:['{\"text\":\"逃走者をたたくと確保\",\"color\":\"gray\"}']}} 1"
+     ]
+    },
+    "1.21.6": {
+     "lines": [
+      "give @a[team=hunter] minecraft:stick[custom_name={text:\"確保の棒\",color:\"gold\",italic:false},lore=[{text:\"逃走者をたたくと確保\",color:\"gray\"}]] 1"
+     ]
+    }
+   },
+   "notes_ja": "1.20.1 は名前を JSON の文字列で '…' に包みます。1.21.5 以降は SNBT の文字をそのまま書きます。",
+   "notes_en": "1.20.1 wraps the name as a JSON string in '...'; 1.21.5+ writes the SNBT text directly."
+  },
+  {
+   "id": "pl_holding_check",
+   "category": "players",
+   "title_ja": "手に持っているかを調べる",
+   "title_en": "Check what a player is holding",
+   "desc_ja": "1.20.1 は NBT の SelectedItem、1.20.5 以降は execute if items。",
+   "desc_en": "1.20.1 reads SelectedItem NBT; 1.20.5+ uses execute if items.",
+   "versions": [
+    "1.20.1",
+    "1.21.6"
+   ],
+   "kind": "function",
+   "variants": {
+    "1.20.1": {
+     "lines": [
+      "execute as @a[nbt={SelectedItem:{id:\"minecraft:stick\"}}] run title @s actionbar {\"text\":\"棒を持っている\",\"color\":\"gold\"}"
+     ]
+    },
+    "1.21.6": {
+     "lines": [
+      "execute as @a if items entity @s weapon.mainhand minecraft:stick run title @s actionbar {\"text\":\"棒を持っている\",\"color\":\"gold\"}"
+     ]
+    }
+   }
+  },
+  {
+   "id": "pl_effect_check",
+   "category": "players",
+   "title_ja": "効果がかかっているかを調べる",
+   "title_en": "Check whether an effect is active",
+   "desc_ja": "NBT の名前が 1.20.2 で ActiveEffects から active_effects に変わった。",
+   "desc_en": "The NBT key changed from ActiveEffects to active_effects in 1.20.2.",
+   "versions": [
+    "1.20.1",
+    "1.21.6"
+   ],
+   "kind": "function",
+   "variants": {
+    "1.20.1": {
+     "lines": [
+      "execute as @a[nbt={ActiveEffects:[{Id:14}]}] run title @s actionbar {\"text\":\"透明になっている\",\"color\":\"aqua\"}"
+     ]
+    },
+    "1.21.6": {
+     "lines": [
+      "execute as @a[nbt={active_effects:[{id:\"minecraft:invisibility\"}]}] run title @s actionbar {\"text\":\"透明になっている\",\"color\":\"aqua\"}"
+     ]
+    }
+   },
+   "notes_ja": "1.20.1 は効果を番号で書きます(14 = 透明化)。",
+   "notes_en": "1.20.1 uses effect numbers (14 = invisibility)."
+  },
+  {
+   "id": "pl_shop_trigger",
+   "category": "players",
+   "title_ja": "金塊5個で剣と交換(trigger の店)",
+   "title_en": "Trade 5 gold nuggets for a sword (trigger shop)",
+   "desc_ja": "プレイヤーが /trigger shop を打つと、持ち物を数えて足りれば交換(毎 tick)。",
+   "desc_en": "When a player runs /trigger shop, count their nuggets and trade if they have enough.",
+   "versions": [
+    "1.20.1",
+    "1.21.6"
+   ],
+   "kind": "function",
+   "tick": true,
+   "lines": [
+    "execute as @a[scores={shop=1..}] store result score @s coins run clear @s minecraft:gold_nugget 0",
+    "execute as @a[scores={shop=1..,coins=5..}] run give @s minecraft:iron_sword 1",
+    "execute as @a[scores={shop=1..,coins=5..}] run clear @s minecraft:gold_nugget 5",
+    "execute as @a[scores={shop=1..,coins=..4}] run tellraw @s {\"text\":\"金塊が足りません\",\"color\":\"red\"}",
+    "scoreboard players set @a[scores={shop=1..}] shop 0",
+    "scoreboard players enable @a shop"
+   ],
+   "also": [
+    {
+     "id": "shop_setup",
+     "label_ja": "店の準備",
+     "label_en": "Shop setup",
+     "lines": [
+      "scoreboard objectives add shop trigger",
+      "scoreboard objectives add coins dummy"
+     ]
+    }
+   ],
+   "notes_ja": "clear の数 0 は消さずに数えるだけ。trigger は一度使うと enable し直すまで打てません。",
+   "notes_en": "clear with count 0 only counts. A trigger must be enabled again after each use."
+  },
+  {
+   "id": "pvp_kill_reward",
+   "category": "pvp",
+   "title_ja": "倒したらご褒美",
+   "title_en": "Reward on kill",
+   "desc_ja": "毎 tick、新しく倒した人に金のりんごと音と一言。",
+   "desc_en": "Every tick, give anyone who just got a kill a golden apple, a sound and a message.",
+   "versions": [
+    "1.20.1",
+    "1.21.6"
+   ],
+   "kind": "function",
+   "tick": true,
+   "lines": [
+    "execute as @a[scores={newkill=1..}] run give @s minecraft:golden_apple 1",
+    "execute as @a[scores={newkill=1..}] run tellraw @a [{\"selector\":\"@s\",\"color\":\"gold\"},{\"text\":\" がキル！ 合計 \"},{\"score\":{\"name\":\"@s\",\"objective\":\"kills\"}}]",
+    "execute as @a[scores={newkill=1..}] at @s run playsound minecraft:entity.experience_orb.pickup master @s ~ ~ ~ 1 1",
+    "scoreboard players set @a newkill 0"
+   ],
+   "also": [
+    {
+     "id": "kill_setup",
+     "label_ja": "キルの項目",
+     "label_en": "Kill objectives",
+     "load": true,
+     "lines": [
+      "scoreboard objectives add kills playerKillCount",
+      "scoreboard objectives add newkill playerKillCount"
+     ]
+    }
+   ],
+   "notes_ja": "合計(kills)と、毎 tick 0 に戻す方(newkill)の2つを使います。",
+   "notes_en": "Use two objectives: a running total (kills) and one reset to 0 every tick (newkill)."
+  },
+  {
+   "id": "pvp_respawn",
+   "category": "pvp",
+   "title_ja": "復活したときの処理",
+   "title_en": "Handle respawns",
+   "desc_ja": "@e[type=player] は生きている人だけを選ぶので、死んで戻ってきた瞬間を拾える。",
+   "desc_en": "@e[type=player] only selects living players, so it catches the moment someone respawns.",
+   "versions": [
+    "1.20.1",
+    "1.21.6"
+   ],
+   "kind": "function",
+   "tick": true,
+   "lines": [
+    "execute as @e[type=player,scores={died=1..}] run function game:on_respawn"
+   ],
+   "also": [
+    {
+     "id": "on_respawn",
+     "label_ja": "復活した人(@s)",
+     "label_en": "The respawned player (@s)",
+     "lines": [
+      "scoreboard players set @s died 0",
+      "tp @s[team=red] 20 -60 0",
+      "tp @s[team=blue] -20 -60 0",
+      "effect give @s minecraft:resistance 3 255 true",
+      "give @s minecraft:iron_sword 1",
+      "title @s title {\"text\":\"復活！\",\"color\":\"green\"}"
+     ]
+    },
+    {
+     "id": "respawn_setup",
+     "label_ja": "死亡数の項目",
+     "label_en": "Death objective",
+     "load": true,
+     "lines": [
+      "scoreboard objectives add died deathCount",
+      "gamerule doImmediateRespawn true"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "pvp_team_kills_win",
+   "category": "pvp",
+   "title_ja": "チームの合計キルで勝敗",
+   "title_en": "Win by team kill total",
+   "desc_ja": "倒した人のチームに1点、先に10点で勝ち。",
+   "desc_en": "One point to the killer's team; first to 10 wins.",
+   "versions": [
+    "1.20.1",
+    "1.21.6"
+   ],
+   "kind": "function",
+   "tick": true,
+   "lines": [
+    "execute as @a[team=red,scores={newkill=1..}] run scoreboard players add Red points 1",
+    "execute as @a[team=blue,scores={newkill=1..}] run scoreboard players add Blue points 1",
+    "execute if score #state game matches 2 if score Red points matches 10.. run title @a title {\"text\":\"赤チームの勝利\",\"color\":\"red\"}",
+    "execute if score #state game matches 2 if score Blue points matches 10.. run title @a title {\"text\":\"青チームの勝利\",\"color\":\"blue\"}",
+    "execute if score #state game matches 2 if score Red points matches 10.. run scoreboard players set #state game 3",
+    "execute if score #state game matches 2 if score Blue points matches 10.. run scoreboard players set #state game 3"
+   ],
+   "notes_ja": "「倒したらご褒美」の newkill を 0 に戻す行より前に置きます。",
+   "notes_en": "Put it before the line that resets newkill to 0 in the reward snippet."
+  },
+  {
+   "id": "pvp_last_team",
+   "category": "pvp",
+   "title_ja": "最後まで残ったチームの勝ち",
+   "title_en": "Last team standing wins",
+   "desc_ja": "観戦になっていない人が片方のチームにしかいなければ終わり。",
+   "desc_en": "End the round when only one team still has non-spectators.",
+   "versions": [
+    "1.20.1",
+    "1.21.6"
+   ],
+   "kind": "function",
+   "tick": true,
+   "lines": [
+    "execute if score #state game matches 2 unless entity @a[team=blue,gamemode=!spectator] if entity @a[team=red,gamemode=!spectator] run title @a title {\"text\":\"赤チームの勝利\",\"color\":\"red\"}",
+    "execute if score #state game matches 2 unless entity @a[team=red,gamemode=!spectator] if entity @a[team=blue,gamemode=!spectator] run title @a title {\"text\":\"青チームの勝利\",\"color\":\"blue\"}",
+    "execute if score #state game matches 2 unless entity @a[team=blue,gamemode=!spectator] run scoreboard players set #state game 3",
+    "execute if score #state game matches 2 unless entity @a[team=red,gamemode=!spectator] run scoreboard players set #state game 3"
+   ]
+  },
+  {
+   "id": "tag_setup",
+   "category": "tag",
+   "title_ja": "逃走中の準備",
+   "title_en": "Run-for-money setup",
+   "desc_ja": "ハンター・逃走者・確保のチーム、賞金と被ダメージの項目、落下ダメージなし。",
+   "desc_en": "Hunter, runner and jail teams; money and damage objectives; no fall damage.",
+   "versions": [
+    "1.20.1",
+    "1.21.6"
+   ],
+   "kind": "function",
+   "suggest_id": "setup",
+   "load": true,
+   "lines": [
+    "team add hunter {\"text\":\"ハンター\"}",
+    "team modify hunter color dark_gray",
+    "team add runner {\"text\":\"逃走者\"}",
+    "team modify runner color green",
+    "team add jail {\"text\":\"確保\"}",
+    "team modify jail color red",
+    "scoreboard objectives add game dummy",
+    "scoreboard objectives add money dummy {\"text\":\"賞金\",\"color\":\"gold\"}",
+    "scoreboard objectives add hurt minecraft.custom:minecraft.damage_taken",
+    "scoreboard objectives add catches dummy",
+    "scoreboard objectives setdisplay sidebar money",
+    "gamerule fallDamage false",
+    "gamerule naturalRegeneration true"
+   ],
+   "notes_ja": "落下や溺れでも hurt が増えるので、落下ダメージを切っておきます。",
+   "notes_en": "Falling also raises hurt, so fall damage is turned off."
+  },
+  {
+   "id": "tag_catch_on_hit",
+   "category": "tag",
+   "title_ja": "たたかれたら確保(damage_taken)",
+   "title_en": "Caught when hit (damage_taken)",
+   "desc_ja": "ダメージを受けた逃走者を確保し、たたいたハンターの確保数を増やす。",
+   "desc_en": "A hurt runner is caught; the hunter who hit them gets a catch.",
+   "versions": [
+    "1.20.1",
+    "1.21.6"
+   ],
+   "kind": "function",
+   "tick": true,
+   "lines": [
+    "execute as @a[team=runner,scores={hurt=1..}] on attacker run scoreboard players add @s catches 1",
+    "execute as @a[team=runner,scores={hurt=1..}] run tellraw @a [{\"selector\":\"@s\",\"color\":\"red\"},{\"text\":\" 確保！\",\"color\":\"red\"}]",
+    "execute as @a[team=runner,scores={hurt=1..}] at @s run playsound minecraft:block.anvil.land master @a ~ ~ ~ 1 1",
+    "tp @a[team=runner,scores={hurt=1..}] 30 -60 30",
+    "team join jail @a[team=runner,scores={hurt=1..}]",
+    "scoreboard players reset @a hurt"
+   ],
+   "notes_ja": "execute on attacker は 1.19.4 から。同じ tick の中で tp → team join の順にしないと、先にチームが変わって tp されません。",
+   "notes_en": "execute on attacker exists since 1.19.4. Teleport before changing team, or the runner selector no longer matches."
+  },
+  {
+   "id": "tag_money",
+   "category": "tag",
+   "title_ja": "1秒ごとに賞金を増やす",
+   "title_en": "Add money every second",
+   "desc_ja": "20 tick ごとに逃走者全員へ 100 円。",
+   "desc_en": "Every 20 ticks, give every runner 100.",
+   "versions": [
+    "1.20.1",
+    "1.21.6"
+   ],
+   "kind": "function",
+   "tick": true,
+   "lines": [
+    "execute if score #state game matches 2 run scoreboard players add #mt game 1",
+    "execute if score #mt game matches 20.. run scoreboard players add @a[team=runner] money 100",
+    "execute if score #mt game matches 20.. run scoreboard players set #mt game 0",
+    "title @a[team=runner] actionbar [{\"text\":\"賞金 \",\"color\":\"gold\"},{\"score\":{\"name\":\"@s\",\"objective\":\"money\"}},{\"text\":\" 円\"}]"
+   ],
+   "notes_ja": "アクションバーの @s は各逃走者に置き換わります(title の宛先ごとに計算)。",
+   "notes_en": "@s in the action bar text resolves per runner."
+  },
+  {
+   "id": "tag_swap_oni",
+   "category": "tag",
+   "title_ja": "鬼ごっこ: たたかれた人が次の鬼",
+   "title_en": "Tag: whoever is hit becomes 'it'",
+   "desc_ja": "たたかれた逃げる側が鬼に、今の鬼は逃げる側に。新しい鬼は3秒動きが遅い。",
+   "desc_en": "The hit runner becomes the hunter, the old hunter runs; the new hunter is slowed for 3 s.",
+   "versions": [
+    "1.20.1",
+    "1.21.6"
+   ],
+   "kind": "function",
+   "tick": true,
+   "lines": [
+    "tag @a[team=runner,scores={hurt=1..},limit=1,sort=random] add new_oni",
+    "execute if entity @a[tag=new_oni] run team join runner @a[team=hunter]",
+    "team join hunter @a[tag=new_oni]",
+    "effect give @a[tag=new_oni] minecraft:slowness 3 4 true",
+    "execute as @a[tag=new_oni] run tellraw @a [{\"selector\":\"@s\",\"color\":\"dark_red\"},{\"text\":\" が鬼になった\"}]",
+    "tag @a remove new_oni",
+    "scoreboard players reset @a hurt"
+   ]
+  },
+  {
+   "id": "tag_surrender_button",
+   "category": "tag",
+   "title_ja": "自首ボタン",
+   "title_en": "Surrender button",
+   "desc_ja": "ボタンの近くの逃走者が自首して賞金を確定する。",
+   "desc_en": "The runner next to the button surrenders and keeps their money.",
+   "versions": [
+    "1.20.1",
+    "1.21.6"
+   ],
+   "kind": "blocks",
+   "origin": [
+    14,
+    -60,
+    14
+   ],
+   "facing": "east",
+   "trigger": "button",
+   "expect_success": false,
+   "blocks": [
+    {
+     "type": "impulse",
+     "cmd": "tag @p[team=runner,distance=..4] add surrender"
+    },
+    {
+     "type": "chain",
+     "conditional": true,
+     "cmd": "tellraw @a [{\"selector\":\"@a[tag=surrender]\",\"color\":\"yellow\"},{\"text\":\" が自首しました\"}]"
+    },
+    {
+     "type": "chain",
+     "conditional": true,
+     "cmd": "team leave @a[tag=surrender]"
+    },
+    {
+     "type": "chain",
+     "conditional": true,
+     "cmd": "tp @a[tag=surrender] 0 -60 -20"
+    }
+   ],
+   "notes_ja": "ボタンから動くコマンドブロックには @s がいないので、@p で近くの人を選びます。",
+   "notes_en": "A button-powered block has no @s, so @p picks the nearest player."
+  },
+  {
+   "id": "tag_catch_test",
+   "category": "tag",
+   "title_ja": "テスト: ハンターが逃走者をたたく",
+   "title_en": "Test: the hunter hits a runner",
+   "desc_ja": "プレイヤーの動き。Alice が Bob に近づいてたたき、確保が見えたかを調べる。",
+   "desc_en": "Player actions: Alice chases and hits Bob; check that the catch was shown.",
+   "versions": [
+    "1.20.1",
+    "1.21.6"
+   ],
+   "kind": "steps",
+   "steps": [
+    {
+     "run": "team join hunter Alice"
+    },
+    {
+     "run": "team join runner Bob"
+    },
+    {
+     "run": "tp Bob 2 -60 0"
+    },
+    {
+     "run": "tp Alice 0 -60 0"
+    },
+    {
+     "player": "Alice",
+     "do": "attack",
+     "target": "Bob",
+     "times": 1,
+     "chase": true,
+     "wait": 1,
+     "expect": {
+      "hurt": "Bob",
+      "seen_by": "Bob",
+      "seen_contains": "確保"
+     }
+    },
+    {
+     "run": "team list jail",
+     "expect": {
+      "output_contains": "Bob"
+     }
+    }
+   ],
+   "notes_ja": "「逃走中の準備」と「たたかれたら確保」を先に入れておきます。",
+   "notes_en": "Add the setup and the catch-on-hit snippets first."
+  },
+  {
+   "id": "ww_roles",
+   "category": "werewolf",
+   "title_ja": "役職をこっそり配る(タグ)",
+   "title_en": "Hand out secret roles (tags)",
+   "desc_ja": "人狼1人・占い師1人・残りは村人。本人にだけタイトルで伝える。",
+   "desc_en": "One werewolf, one seer, the rest villagers; each sees only their own role.",
+   "versions": [
+    "1.20.1",
+    "1.21.6"
+   ],
+   "kind": "function",
+   "lines": [
+    "tag @a remove wolf",
+    "tag @a remove seer",
+    "tag @a remove villager",
+    "tag @a add alive",
+    "tag @r add wolf",
+    "tag @r[tag=!wolf] add seer",
+    "tag @a[tag=!wolf,tag=!seer] add villager",
+    "title @a[tag=wolf] title {\"text\":\"あなたは人狼\",\"color\":\"red\"}",
+    "title @a[tag=seer] title {\"text\":\"あなたは占い師\",\"color\":\"light_purple\"}",
+    "title @a[tag=villager] title {\"text\":\"あなたは村人\",\"color\":\"green\"}",
+    "tellraw @a[tag=wolf] [{\"text\":\"仲間: \",\"color\":\"red\"},{\"selector\":\"@a[tag=wolf]\"}]"
+   ],
+   "notes_ja": "タグは他の人の画面には出ません。人数に合わせて tag @r[tag=!wolf] add wolf を足せば人狼が増えます。",
+   "notes_en": "Tags are invisible to others. Repeat tag @r[tag=!wolf] add wolf for more werewolves."
+  },
+  {
+   "id": "ww_vote_open",
+   "category": "werewolf",
+   "title_ja": "投票を始める(番号と /trigger)",
+   "title_en": "Open the vote (numbers and /trigger)",
+   "desc_ja": "生きている人に番号を振って一覧を出し、/trigger vote set 番号 で投票させる。",
+   "desc_en": "Number the living players, list them, and let them vote with /trigger vote set N.",
+   "versions": [
+    "1.20.1",
+    "1.21.6"
+   ],
+   "kind": "function",
+   "lines": [
+    "scoreboard objectives add vote trigger",
+    "scoreboard objectives add votes dummy",
+    "scoreboard objectives add pid dummy",
+    "scoreboard objectives add game dummy",
+    "scoreboard players set #n game 0",
+    "execute as @a[tag=alive] run function game:assign_pid",
+    "execute as @a[tag=alive] run tellraw @a [{\"score\":{\"name\":\"@s\",\"objective\":\"pid\"},\"color\":\"gold\"},{\"text\":\" : \"},{\"selector\":\"@s\"}]",
+    "scoreboard players reset @a vote",
+    "scoreboard players enable @a[tag=alive] vote",
+    "tellraw @a {\"text\":\"/trigger vote set 番号 で投票してください\",\"color\":\"yellow\"}"
+   ],
+   "also": [
+    {
+     "id": "assign_pid",
+     "label_ja": "番号を振る(@s)",
+     "label_en": "Give @s a number",
+     "lines": [
+      "scoreboard players add #n game 1",
+      "scoreboard players operation @s pid = #n game"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "ww_tally",
+   "category": "werewolf",
+   "title_ja": "票を数えて追放する",
+   "title_en": "Count votes and banish",
+   "desc_ja": "候補ごとに自分の番号へ入った票を数え、最多が1人なら追放、同票なら追放なし。",
+   "desc_en": "Count votes for each candidate; banish a single top vote-getter, nobody on a tie.",
+   "versions": [
+    "1.20.1",
+    "1.21.6"
+   ],
+   "kind": "function",
+   "suggest_id": "tally",
+   "lines": [
+    "scoreboard players set @a votes 0",
+    "execute as @a[tag=alive] run function game:tally_count",
+    "scoreboard players set #max game 0",
+    "execute as @a[tag=alive] run scoreboard players operation #max game > @s votes",
+    "execute as @a[tag=alive] if score @s votes = #max game run tag @s add top",
+    "execute store result score #ntop game if entity @a[tag=top]",
+    "execute if score #ntop game matches 1 if score #max game matches 1.. run tellraw @a [{\"selector\":\"@a[tag=top]\",\"color\":\"red\"},{\"text\":\" が追放されました\"}]",
+    "execute if score #ntop game matches 1 if score #max game matches 1.. run gamemode spectator @a[tag=top]",
+    "execute if score #ntop game matches 1 if score #max game matches 1.. run tag @a[tag=top] remove alive",
+    "execute if score #ntop game matches 2.. run tellraw @a {\"text\":\"同票のため追放なし\",\"color\":\"gray\"}",
+    "tag @a remove top",
+    "scoreboard players reset @a vote"
+   ],
+   "also": [
+    {
+     "id": "tally_count",
+     "label_ja": "@s への票を数える",
+     "label_en": "Count the votes for @s",
+     "lines": [
+      "scoreboard players set #cnt game 0",
+      "scoreboard players operation #me game = @s pid",
+      "execute as @a[tag=alive] if score @s vote = #me game run scoreboard players add #cnt game 1",
+      "scoreboard players operation @s votes = #cnt game"
+     ]
+    }
+   ],
+   "notes_ja": "誰も投票しないと #max が 0 のままなので追放されません。",
+   "notes_en": "With no votes #max stays 0 and nobody is banished."
+  },
+  {
+   "id": "ww_vote_test",
+   "category": "werewolf",
+   "title_ja": "テスト: 2人が同じ人に投票",
+   "title_en": "Test: two players vote for the same person",
+   "desc_ja": "プレイヤーがチャットで /trigger を打つ動き。",
+   "desc_en": "Players type /trigger in chat.",
+   "versions": [
+    "1.20.1",
+    "1.21.6"
+   ],
+   "kind": "steps",
+   "steps": [
+    {
+     "player": "Alice",
+     "do": "command",
+     "text": "trigger vote set 2"
+    },
+    {
+     "player": "Carol",
+     "do": "command",
+     "text": "trigger vote set 2",
+     "wait": 1
+    },
+    {
+     "run": "scoreboard players get Alice vote",
+     "expect": {
+      "output_regex": "has 2 "
+     }
+    }
+   ],
+   "notes_ja": "「投票を始める」を先に流しておきます(enable されていないと trigger は拒否されます)。",
+   "notes_en": "Run 'open the vote' first; a trigger that is not enabled is refused."
+  },
+  {
+   "id": "ww_night_day",
+   "category": "werewolf",
+   "title_ja": "夜と昼を切り替える",
+   "title_en": "Switch between night and day",
+   "desc_ja": "夜は人狼以外を目隠し、昼は解除。時間の流れは止めておく。",
+   "desc_en": "At night blind everyone but the werewolves; clear it by day. Daylight cycle is stopped.",
+   "versions": [
+    "1.20.1",
+    "1.21.6"
+   ],
+   "kind": "function",
+   "lines": [
+    "gamerule doDaylightCycle false",
+    "time set 18000",
+    "weather clear",
+    "effect give @a[tag=alive,tag=!wolf] minecraft:blindness 30 0 true",
+    "title @a title {\"text\":\"夜になりました\",\"color\":\"dark_blue\"}"
+   ],
+   "also": [
+    {
+     "id": "day",
+     "label_ja": "昼にする",
+     "label_en": "Make it day",
+     "lines": [
+      "time set 1000",
+      "effect clear @a minecraft:blindness",
+      "title @a title {\"text\":\"朝になりました\",\"color\":\"yellow\"}"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "ww_win_check",
+   "category": "werewolf",
+   "title_ja": "勝敗の判定",
+   "title_en": "Win check",
+   "desc_ja": "生きている人狼と村側を数え、人狼0なら村、人狼が村側以上なら人狼の勝ち。",
+   "desc_en": "Count living wolves and others; villagers win at 0 wolves, wolves win when they equal or outnumber.",
+   "versions": [
+    "1.20.1",
+    "1.21.6"
+   ],
+   "kind": "function",
+   "lines": [
+    "execute store result score #wolves game if entity @a[tag=alive,tag=wolf]",
+    "execute store result score #village game if entity @a[tag=alive,tag=!wolf]",
+    "execute if score #wolves game matches 0 run title @a title {\"text\":\"村人の勝利\",\"color\":\"green\"}",
+    "execute if score #wolves game matches 1.. if score #wolves game >= #village game run title @a title {\"text\":\"人狼の勝利\",\"color\":\"red\"}"
+   ]
+  },
+  {
+   "id": "cap_point",
+   "category": "capture",
+   "title_ja": "拠点を取り合う(占領ゲージ)",
+   "title_en": "Control point with a capture meter",
+   "desc_ja": "半径5の中にいる人数で -100〜100 のゲージを動かし、取り切ったチームに毎秒1点。",
+   "desc_en": "A -100..100 meter moved by who stands within 5 blocks; the owning team scores 1 per second.",
+   "versions": [
+    "1.20.1",
+    "1.21.6"
+   ],
+   "kind": "function",
+   "tick": true,
+   "lines": [
+    "execute positioned 0 -60 30 store result score #red_a game if entity @a[team=red,distance=..5,gamemode=!spectator]",
+    "execute positioned 0 -60 30 store result score #blue_a game if entity @a[team=blue,distance=..5,gamemode=!spectator]",
+    "execute if score #red_a game matches 1.. if score #blue_a game matches 0 if score #cp_a game matches ..99 run scoreboard players add #cp_a game 1",
+    "execute if score #blue_a game matches 1.. if score #red_a game matches 0 if score #cp_a game matches -99.. run scoreboard players remove #cp_a game 1",
+    "scoreboard players add #cp_t game 1",
+    "execute if score #cp_t game matches 20.. if score #cp_a game matches 100 run scoreboard players add Red points 1",
+    "execute if score #cp_t game matches 20.. if score #cp_a game matches -100 run scoreboard players add Blue points 1",
+    "execute if score #cp_t game matches 20.. run scoreboard players set #cp_t game 0",
+    "execute positioned 0 -60 30 run title @a[distance=..5] actionbar [{\"text\":\"拠点A \"},{\"score\":{\"name\":\"#cp_a\",\"objective\":\"game\"}}]"
+   ],
+   "notes_ja": "両方のチームがいると止まります(取り合い中)。拠点を増やすなら座標と #cp_b などを替えて複製します。",
+   "notes_en": "With both teams inside, the meter stops (contested). Copy it with new coordinates and #cp_b for more points."
+  },
+  {
+   "id": "cap_point_bossbar",
+   "category": "capture",
+   "title_ja": "拠点のゲージをボスバーに",
+   "title_en": "Show the capture meter on a boss bar",
+   "desc_ja": "-100〜100 を 0〜200 にずらして表示し、持ち主で色を変える。",
+   "desc_en": "Shift -100..100 to 0..200 for the bar and color it by owner.",
+   "versions": [
+    "1.20.1",
+    "1.21.6"
+   ],
+   "kind": "function",
+   "tick": true,
+   "lines": [
+    "scoreboard players operation #cp_bar game = #cp_a game",
+    "scoreboard players add #cp_bar game 100",
+    "execute store result bossbar game:point_a value run scoreboard players get #cp_bar game",
+    "execute if score #cp_a game matches 1.. run bossbar set game:point_a color red",
+    "execute if score #cp_a game matches ..-1 run bossbar set game:point_a color blue",
+    "execute if score #cp_a game matches 0 run bossbar set game:point_a color white"
+   ],
+   "also": [
+    {
+     "id": "point_bar_setup",
+     "label_ja": "ボスバーを作る",
+     "label_en": "Create the boss bar",
+     "load": true,
+     "lines": [
+      "bossbar add game:point_a {\"text\":\"拠点A\"}",
+      "bossbar set game:point_a max 200",
+      "bossbar set game:point_a players @a",
+      "scoreboard players set #cp_a game 0"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "cap_core",
+   "category": "capture",
+   "title_ja": "攻城戦: コアを壊したら勝ち",
+   "title_en": "Siege: break the core to win",
+   "desc_ja": "ビーコンをコアにし、壊せるつるはしを攻める側にだけ渡す。adventure でも壊せる指定は版で書き方が違う。",
+   "desc_en": "A beacon is the core; only attackers get a pickaxe that may break it. The adventure-mode permission differs by version.",
+   "versions": [
+    "1.20.1",
+    "1.21.6"
+   ],
+   "kind": "function",
+   "variants": {
+    "1.20.1": {
+     "lines": [
+      "setblock 0 -60 20 minecraft:beacon",
+      "gamemode adventure @a",
+      "give @a[team=red] minecraft:iron_pickaxe{CanDestroy:[\"minecraft:beacon\"]} 1"
+     ]
+    },
+    "1.21.6": {
+     "lines": [
+      "setblock 0 -60 20 minecraft:beacon",
+      "gamemode adventure @a",
+      "give @a[team=red] minecraft:iron_pickaxe[can_break={blocks:\"minecraft:beacon\"}] 1"
+     ]
+    }
+   },
+   "also": [
+    {
+     "id": "core_tick",
+     "label_ja": "コアの見張り(毎 tick)",
+     "label_en": "Watch the core (every tick)",
+     "tick": true,
+     "lines": [
+      "execute if score #state game matches 2 unless block 0 -60 20 minecraft:beacon run title @a title {\"text\":\"コアが壊された！ 赤の勝利\",\"color\":\"red\"}",
+      "execute if score #state game matches 2 unless block 0 -60 20 minecraft:beacon run scoreboard players set #state game 3"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "cb_repeat_conditional",
+   "category": "blocks",
+   "title_ja": "リピート(常時)+条件付きチェーン",
+   "title_en": "Always-active repeat + conditional chains",
+   "desc_ja": "条件が成り立ったときだけ後ろのチェーンが動く。",
+   "desc_en": "The chain blocks only run when the repeat block's check succeeds.",
+   "versions": [
+    "1.20.1",
+    "1.21.6"
+   ],
+   "kind": "blocks",
+   "origin": [
+    5,
+    -60,
+    18
+   ],
+   "facing": "east",
+   "expect_success": false,
+   "blocks": [
+    {
+     "type": "repeat",
+     "auto": true,
+     "cmd": "execute if entity @a[tag=winner]"
+    },
+    {
+     "type": "chain",
+     "conditional": true,
+     "cmd": "title @a title {\"text\":\"勝者が決まった\",\"color\":\"gold\"}"
+    },
+    {
+     "type": "chain",
+     "conditional": true,
+     "cmd": "tag @a remove winner"
+    }
+   ],
+   "notes_ja": "tag Alice add winner を打つと1回だけ動きます。条件付きは「すぐ後ろのブロックが成功したか」を見ます。",
+   "notes_en": "Run tag Alice add winner to fire it once. Conditional means 'did the block just behind me succeed'."
+  },
+  {
+   "id": "cb_impulse_once",
+   "category": "blocks",
+   "title_ja": "インパルス+チェーンで1回だけ",
+   "title_en": "Impulse + chains, run once",
+   "desc_ja": "レッドストーンブロックで1回押し、続けて全部動かす。",
+   "desc_en": "Powered once by a redstone block; the whole line runs in order.",
+   "versions": [
+    "1.20.1",
+    "1.21.6"
+   ],
+   "kind": "blocks",
+   "origin": [
+    5,
+    -60,
+    22
+   ],
+   "facing": "east",
+   "trigger": "redstone_block",
+   "blocks": [
+    {
+     "type": "impulse",
+     "cmd": "time set day"
+    },
+    {
+     "type": "chain",
+     "cmd": "weather clear"
+    },
+    {
+     "type": "chain",
+     "cmd": "title @a title {\"text\":\"朝になった\",\"color\":\"yellow\"}"
+    }
+   ],
+   "notes_ja": "チェーンは「常時実行」が既定です(必要入力にすると動きません)。",
+   "notes_en": "Chain blocks default to always active (needs-redstone chains do not run)."
+  },
+  {
+   "id": "cb_turn_up",
+   "category": "blocks",
+   "title_ja": "チェーンを上に曲げる",
+   "title_en": "Turn a chain line upward",
+   "desc_ja": "2つ目の向きを up にすると、3つ目はその上に置かれる。狭い場所で長い列を組むとき。",
+   "desc_en": "Setting the second block's facing to up puts the third one above it; handy in tight spaces.",
+   "versions": [
+    "1.20.1",
+    "1.21.6"
+   ],
+   "kind": "blocks",
+   "origin": [
+    5,
+    -60,
+    26
+   ],
+   "facing": "east",
+   "expect_success": false,
+   "blocks": [
+    {
+     "type": "repeat",
+     "auto": true,
+     "cmd": "execute if score #state game matches 2"
+    },
+    {
+     "type": "chain",
+     "conditional": true,
+     "facing": "up",
+     "cmd": "title @a[team=runner] actionbar {\"text\":\"逃げろ\",\"color\":\"green\"}"
+    },
+    {
+     "type": "chain",
+     "cmd": "title @a[team=jail] actionbar {\"text\":\"牢屋で待機中\",\"color\":\"red\"}"
+    }
+   ],
+   "notes_ja": "向き(facing)はそのブロックが「次」を指す方向です。エディタの配置図で確かめられます。",
+   "notes_en": "facing is the direction a block points to the next one. Check it in the editor's layout map."
+  },
+  {
+   "id": "cb_clock",
+   "category": "blocks",
+   "title_ja": "リピートで時計を回す",
+   "title_en": "A repeat-block clock",
+   "desc_ja": "試合中だけ毎 tick 数を足す。データパックを使わない場合の tick の代わり。",
+   "desc_en": "Counts every tick while playing; a tick function substitute without a data pack.",
+   "versions": [
+    "1.20.1",
+    "1.21.6"
+   ],
+   "kind": "blocks",
+   "origin": [
+    5,
+    -60,
+    30
+   ],
+   "facing": "east",
+   "expect_success": false,
+   "blocks": [
+    {
+     "type": "repeat",
+     "auto": true,
+     "cmd": "execute if score #state game matches 2 run scoreboard players add #ticks game 1"
+    },
+    {
+     "type": "chain",
+     "cmd": "execute if score #ticks game matches 20.. run scoreboard players remove #time game 1"
+    },
+    {
+     "type": "chain",
+     "cmd": "execute if score #ticks game matches 20.. run scoreboard players set #ticks game 0"
+    }
+   ]
+  },
+  {
+   "id": "cb_map_reset",
+   "category": "blocks",
+   "title_ja": "ボタンでマップを元に戻す(clone)",
+   "title_en": "Reset the map with a button (clone)",
+   "desc_ja": "保存しておいた見本の区画を競技場へ写す。",
+   "desc_en": "Copy a saved template area over the arena.",
+   "versions": [
+    "1.20.1",
+    "1.21.6"
+   ],
+   "kind": "blocks",
+   "origin": [
+    5,
+    -60,
+    34
+   ],
+   "facing": "east",
+   "trigger": "button",
+   "expect_success": false,
+   "blocks": [
+    {
+     "type": "impulse",
+     "cmd": "clone -30 -61 -30 -21 -56 -21 -10 -61 -10"
+    },
+    {
+     "type": "chain",
+     "cmd": "kill @e[type=item]"
+    },
+    {
+     "type": "chain",
+     "cmd": "tellraw @a {\"text\":\"マップを元に戻しました\",\"color\":\"aqua\"}"
+    }
+   ],
+   "notes_ja": "見本と競技場の座標は自分のマップに合わせます。読み込まれていない場所は clone できません。",
+   "notes_en": "Adjust both areas to your map. clone fails on chunks that are not loaded."
+  },
+  {
+   "id": "macro_tp",
+   "category": "macro",
+   "title_ja": "座標を渡して移動(マクロ)",
+   "title_en": "Teleport with arguments (macro)",
+   "desc_ja": "$ で始まる行の $(x) などが、呼ぶときの値に置き換わる。",
+   "desc_en": "$(x) in lines starting with $ is replaced by the values passed in.",
+   "versions": [
+    "1.21.6"
+   ],
+   "kind": "function",
+   "lines": [
+    "execute as @a[team=red] run function game:tp_to {x:20,y:-60,z:0}",
+    "execute as @a[team=blue] run function game:tp_to {x:-20,y:-60,z:0}"
+   ],
+   "also": [
+    {
+     "id": "tp_to",
+     "label_ja": "受け取った座標へ(@s)",
+     "label_en": "Go to the given position (@s)",
+     "lines": [
+      "$tp @s $(x) $(y) $(z)",
+      "$spawnpoint @s $(x) $(y) $(z)"
+     ]
+    }
+   ],
+   "notes_ja": "マクロは 1.20.2 から。$ で始めない行に $(…) を書いても置き換わりません。",
+   "notes_en": "Macros start in 1.20.2. $(...) is only replaced in lines that start with $."
+  },
+  {
+   "id": "macro_storage",
+   "category": "macro",
+   "title_ja": "ストレージの値をマクロに渡す",
+   "title_en": "Pass storage values to a macro",
+   "desc_ja": "設定をストレージに置き、function … with storage で渡す。",
+   "desc_en": "Keep settings in storage and pass them with function ... with storage.",
+   "versions": [
+    "1.21.6"
+   ],
+   "kind": "function",
+   "lines": [
+    "data modify storage game:cfg lobby set value {x:0,y:-60,z:0}",
+    "execute as @a run function game:tp_to with storage game:cfg lobby"
+   ],
+   "also": [
+    {
+     "id": "tp_to",
+     "label_ja": "受け取った座標へ(@s)",
+     "label_en": "Go to the given position (@s)",
+     "lines": [
+      "$tp @s $(x) $(y) $(z)"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "macro_score_text",
+   "category": "macro",
+   "title_ja": "スコアの数を文字に埋め込む",
+   "title_en": "Put a score into text with a macro",
+   "desc_ja": "数をストレージに写してからマクロで文字に入れる。",
+   "desc_en": "Copy a score into storage, then use a macro to place it in text.",
+   "versions": [
+    "1.21.6"
+   ],
+   "kind": "function",
+   "lines": [
+    "execute store result storage game:tmp n int 1 run scoreboard players get #time game",
+    "function game:show_n with storage game:tmp"
+   ],
+   "also": [
+    {
+     "id": "show_n",
+     "label_ja": "数を表示",
+     "label_en": "Show the number",
+     "lines": [
+      "$title @a actionbar {text:\"残り $(n) 秒\",color:\"yellow\"}"
+     ]
+    }
+   ],
+   "notes_ja": "単に数を見せるだけなら score の文字部品で足ります。マクロはコマンドの引数そのものに数を入れたいとき。",
+   "notes_en": "To just show a number, a score text component is enough; macros are for putting a number into a command argument."
+  },
+  {
+   "id": "random_value",
+   "category": "macro",
+   "title_ja": "サイコロ(random、1.20.2+)",
+   "title_en": "Dice roll (random, 1.20.2+)",
+   "desc_ja": "1〜6 の乱数をスコアに入れ、出た目で分ける。",
+   "desc_en": "Store a 1-6 random number in a score and branch on it.",
+   "versions": [
+    "1.21.6"
+   ],
+   "kind": "function",
+   "lines": [
+    "scoreboard objectives add game dummy",
+    "execute store result score #dice game run random value 1..6",
+    "tellraw @a [{\"text\":\"サイコロ: \"},{\"score\":{\"name\":\"#dice\",\"objective\":\"game\"},\"color\":\"gold\"}]",
+    "execute if score #dice game matches 6 run tellraw @a {\"text\":\"大当たり！\",\"color\":\"gold\"}"
+   ],
+   "notes_ja": "1.20.1 には random がありません。1.20.1 では @r や tag を使った方法にします。",
+   "notes_en": "1.20.1 has no random command; use @r and tags there."
+  },
+  {
+   "id": "sched_every_second",
+   "category": "schedule",
+   "title_ja": "1秒ごとに自分を呼ぶループ",
+   "title_en": "A loop that calls itself every second",
+   "desc_ja": "tick を使わずに1秒ごとの処理を回す。残り0で止まる。",
+   "desc_en": "Run something every second without tick; stops at 0.",
+   "versions": [
+    "1.20.1",
+    "1.21.6"
+   ],
+   "kind": "function",
+   "suggest_id": "every_second",
+   "lines": [
+    "scoreboard players remove #time game 1",
+    "execute store result bossbar game:time value run scoreboard players get #time game",
+    "execute if score #time game matches 1.. run schedule function game:every_second 1s",
+    "execute if score #time game matches ..0 run title @a title {\"text\":\"時間切れ\",\"color\":\"red\"}"
+   ],
+   "notes_ja": "部品の id を every_second にします。schedule は同じ関数の予約を上書きするので二重に回りません。ボスバーは「ボスバーで残り時間」で作っておきます。",
+   "notes_en": "Save it as every_second. schedule replaces an existing schedule of the same function, so it never runs twice. Create the boss bar with the boss bar snippet."
+  },
+  {
+   "id": "sched_delay",
+   "category": "schedule",
+   "title_ja": "5秒後に1回だけ",
+   "title_en": "Once, 5 seconds later",
+   "desc_ja": "あとで動かしたい処理を予約する。止めるときは schedule clear。",
+   "desc_en": "Book something to run later; cancel it with schedule clear.",
+   "versions": [
+    "1.20.1",
+    "1.21.6"
+   ],
+   "kind": "function",
+   "lines": [
+    "schedule function game:after_5s 5s",
+    "tellraw @a {\"text\":\"5秒後に門が開きます\",\"color\":\"yellow\"}"
+   ],
+   "also": [
+    {
+     "id": "after_5s",
+     "label_ja": "5秒後の処理",
+     "label_en": "Runs 5 s later",
+     "lines": [
+      "fill 0 -60 10 2 -58 10 minecraft:air",
+      "title @a title {\"text\":\"門が開いた\",\"color\":\"gold\"}"
+     ]
+    },
+    {
+     "id": "cancel_after_5s",
+     "label_ja": "予約を取り消す",
+     "label_en": "Cancel the booking",
+     "lines": [
+      "schedule clear game:after_5s"
+     ]
+    }
+   ],
+   "notes_ja": "時間は 20t・5s・1d のように単位つき。単位なしは tick です。",
+   "notes_en": "Times take a unit (20t, 5s, 1d); a bare number means ticks."
+  }
+ ]
+}

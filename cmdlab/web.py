@@ -66,6 +66,20 @@ def api(path: str, body: dict) -> dict:
         out = Path(body.get("out") or (Path.home() / ".mc-cmdlab" / "exports" / (p.get("namespace", "game") + "_" + v)))
         project.write_pack(p, out, v)
         return {"ok": True, "out": str(out)}
+    if path == "/api/console":
+        # type a command (or a player action) and run it right now on the test server, like the in-game chat
+        s = _server()
+        step = body.get("step") or {"run": body.get("command", "")}
+        if body.get("as") and "run" in step:
+            step["as"] = body["as"]
+        res = runner.run_steps(s, STATE["bots"], [step], s.version)
+        return {"result": asdict(res[0]) if res else None}
+    if path == "/api/project/import_pack":
+        p = project.from_datapack(Path(body["pack_dir"]), body.get("version"))
+        if body.get("name"):
+            PROJECTS.mkdir(parents=True, exist_ok=True)
+            (PROJECTS / f"{Path(str(body['name'])).name}.json").write_text(json.dumps(p, ensure_ascii=False, indent=1), encoding="utf-8")
+        return p
     if path == "/api/project/run":
         s = _server()
         p = body["project"]
@@ -203,6 +217,10 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(200, (STATIC / "index.html").read_bytes(), "text/html; charset=utf-8")
         if self.path in ("/editor", "/editor.html") and (STATIC / "editor.html").exists():
             return self._send(200, (STATIC / "editor.html").read_bytes(), "text/html; charset=utf-8")
+        if self.path in ("/guide", "/guide.html") and (STATIC / "guide.html").exists():
+            return self._send(200, (STATIC / "guide.html").read_bytes(), "text/html; charset=utf-8")
+        if self.path == "/snippets.json" and (STATIC / "snippets.json").exists():
+            return self._send(200, (STATIC / "snippets.json").read_bytes(), "application/json; charset=utf-8")
         if self.path.startswith("/api/"):
             return self._api({})
         self._send(404, b"not found", "text/plain")

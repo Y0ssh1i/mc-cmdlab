@@ -76,9 +76,10 @@ def expand(project: dict, steps: list[dict], depth: int = 0) -> list[dict]:
             continue
         m = mods[s["call"]]
         kind = m.get("kind", "function")
-        extra = {k: v for k, v in s.items() if k != "call"}
+        extra = {k: v for k, v in s.items() if k not in ("call", "args")}
         if kind == "function":
-            out.append({"run": f"function {ns}:{m['id']}", **extra, "_module": _label(m)})
+            args = (" " + json.dumps(s["args"], ensure_ascii=False)) if s.get("args") else ""  # macro arguments
+            out.append({"run": f"function {ns}:{m['id']}{args}", **extra, "_module": _label(m)})
         elif kind == "blocks":
             blk = {"blocks": m["blocks"], "origin": m.get("origin", [0, -58, 10]), "wait": m.get("wait", 1),
                    "cleanup": m.get("cleanup", False)}
@@ -157,3 +158,44 @@ def parse_only(text: str | None) -> set[int] | None:
         elif part:
             out.add(int(part))
     return out
+
+
+def from_datapack(pack_dir: Path, version: str | None = None) -> dict:
+    """Turn an existing data pack into a project: every function becomes a module (id = its path, e.g.
+    message/title/victory), tick/load tags become flags, and a first scenario runs the load functions.
+    Several namespaces are kept apart by prefixing the id with the namespace when there is more than one."""
+    pack_dir = Path(pack_dir)
+    meta = json.loads((pack_dir / "pack.mcmeta").read_text(encoding="utf-8"))
+    fmt = meta.get("pack", {}).get("pack_format")
+    if not version:
+        version = versions.PACK_FORMAT_HINT.get(fmt, "1.20.1").split()[0]
+    spaces = [p for p in (pack_dir / "data").iterdir() if p.is_dir() and p.name != "minecraft"]
+    modules, ids = [], {}
+    for ns in spaces:
+        for folder in ("function", "functions"):
+            base = ns / folder
+            for f in sorted(base.rglob("*.mcfunction")) if base.exists() else []:
+                rel = f.relative_to(base).with_suffix("").as_posix()
+                mid = rel if len(spaces) == 1 else f"{ns.name}/{rel}"
+                lines = f.read_text(encoding="utf-8", errors="replace").splitlines()
+                modules.append({"id": mid, "label": rel, "kind": "function", "lines": lines,
+                                "note": f"{ns.name}:{rel}"})
+                ids[f"{ns.name}:{rel}"] = mid
+    for tag in ("tick", "load"):
+        for folder in ("function", "functions"):
+            tf = pack_dir / "data" / "minecraft" / "tags" / folder / f"{tag}.json"
+            if tf.exists():
+                for v in json.loads(tf.read_text(encoding="utf-8")).get("values", []):
+                    v = v if isinstance(v, str) else v.get("id", "")
+                    if v in ids:
+                        next(m for m in modules if m["id"] == ids[v])[tag] = True
+    load_calls = [{"call": m["id"]} for m in modules if m.get("load")]
+    return {
+        "version": version,
+        "title": meta.get("pack", {}).get("description") if isinstance(meta.get("pack", {}).get("description"), str) else pack_dir.name,
+        "namespace": spaces[0].name if len(spaces) == 1 else "imported",
+        "player_names": ["Alice", "Bob", "Carol", "Dave", "Eve"],
+        "source": str(pack_dir),
+        "modules": modules,
+        "scenarios": [{"id": "load", "label": "読み込み時の関数を流す", "steps": load_calls}] if load_calls else [],
+    }

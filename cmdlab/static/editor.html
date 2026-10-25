@@ -180,6 +180,36 @@ pre.log { background:var(--code); border-radius:8px; padding:8px; max-height:200
 select { max-width:100%; text-overflow:ellipsis; }
 .list .lab { min-width:0; }
 .empty { color:var(--sub); font-size:14px; padding:16px; text-align:center; border:1px dashed var(--line); border-radius:10px; }
+/* command console */
+.console { position:sticky; top:0; z-index:20; box-shadow:0 3px 10px rgba(0,0,0,.10); padding:10px 14px; border-color:var(--acc); }
+.conrow { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+.conrow h2 { margin:0; font-size:14px; white-space:nowrap; }
+.seg { display:inline-flex; border:1px solid var(--line); border-radius:8px; overflow:hidden; flex:0 0 auto; }
+.seg button { border:none; border-radius:0; background:transparent; color:var(--sub); padding:5px 10px; font-size:13px; }
+.seg button.on { background:var(--acc); color:#fff; }
+.conin { flex:1 1 380px; display:flex; gap:6px; align-items:center; min-width:0; flex-wrap:wrap; }
+.conin .slash { font:600 16px ui-monospace, Consolas, monospace; color:var(--sub); }
+#conInput { flex:1 1 220px; width:auto; font-size:14px; }
+#conAs { width:auto; max-width:200px; }
+.conin .fld { display:inline-flex; gap:4px; align-items:center; font-size:12px; color:var(--sub); }
+.conin .fld input { width:80px; } .conin .fld input.wide { width:200px; }
+.conout { margin-top:6px; font-size:13px; }
+.conres { display:flex; gap:4px 10px; align-items:baseline; flex-wrap:wrap; min-width:0; }
+.conres .cmd { max-width:100%; }
+.console details { margin-top:4px; font-size:12.5px; } .console summary { cursor:pointer; color:var(--sub); }
+.conhist { max-height:170px; overflow:auto; margin:4px 0 0; padding-left:4px; list-style:none; }
+.conhist li { cursor:pointer; margin:2px 0; padding:2px 4px; border-radius:6px; display:flex; gap:6px; align-items:baseline; }
+.conhist li:hover { background:var(--soft); }
+/* whole layout (map) */
+.mapbar { display:flex; gap:8px 16px; flex-wrap:wrap; align-items:center; margin-bottom:10px; }
+.mapbox { border:1px solid var(--line); border-radius:10px; background:var(--bg); padding:8px; margin-bottom:12px; min-width:0; }
+.mapbox h3 { margin:0 0 2px; font-size:14px; } .mapbox .vh { font-size:12px; color:var(--sub); margin:0 0 6px; }
+.mapsvg { width:100%; display:block; touch-action:none; cursor:grab; user-select:none; border-radius:8px; background:var(--card); }
+.mapsvg .ln { cursor:pointer; } .mapsvg .ln:hover .lnbox { stroke-width:3; }
+.gscroll { overflow:auto; max-height:760px; border-radius:8px; background:var(--card); }
+.gscroll svg { display:block; }
+.gscroll .nd { cursor:pointer; } .gscroll .nd:hover .ndbox { stroke-width:2.5; }
+.issues { font-size:13px; margin:8px 0 0; } .issues div { margin:3px 0; } .issues .chip { margin:1px 2px; display:inline-block; }
 </style>
 </head>
 <body>
@@ -204,6 +234,7 @@ select { max-width:100%; text-overflow:ellipsis; }
     </div>
     <div class="row" style="margin-top:10px">
       <button class="ghost" id="btnNew" data-i="b_new">新規</button>
+      <button class="ghost" id="btnImport" data-i="b_import">データパックを取り込む</button>
       <span class="sep"></span>
       <input id="saveName" class="mono" style="width:180px" data-ip="ph_savename" placeholder="保存名">
       <button id="btnSave" data-i="b_save">保存</button>
@@ -213,6 +244,20 @@ select { max-width:100%; text-overflow:ellipsis; }
       <span id="pStatus" class="status"></span>
     </div>
     <div id="msgs" class="msgs"></div>
+  </section>
+
+  <!-- 4. command console (like the in-game chat) -->
+  <section class="console" id="con">
+    <div class="conrow">
+      <h2 data-i="con_title">コンソール</h2>
+      <span class="seg"><button id="conModeCmd" data-i="con_cmd">コマンド</button><button id="conModeAct" data-i="con_act">プレイヤーの動き</button></span>
+      <div id="conCmdBox" class="conin"><span class="slash">/</span><input id="conInput" class="mono" autocomplete="off" spellcheck="false" data-ip="con_ph" placeholder="say hello"><select id="conAs"></select></div>
+      <div id="conActBox" class="conin" style="display:none"></div>
+      <button id="conRun" data-i="con_run">▶ 実行</button>
+      <button class="ghost" id="conAdd" data-i="con_add">＋ 部品に足す</button>
+    </div>
+    <div id="conOut" class="conout"></div>
+    <details><summary><span data-i="con_hist">これまでに打ったもの</span> (<span id="conHistN">0</span>)</summary><ol id="conHist" class="conhist"></ol></details>
   </section>
 
   <!-- 5. run bar -->
@@ -267,10 +312,12 @@ select { max-width:100%; text-overflow:ellipsis; }
       <div class="tabs">
         <button id="tabEdit" data-i="tab_edit">編集</button>
         <button id="tabFlow" data-i="tab_flow">実行の流れ</button>
+        <button id="tabMap" data-i="tab_map">全体の配置図</button>
         <button id="tabRes" data-i="tab_res">結果</button>
       </div>
       <div id="paneEdit"></div>
       <div id="paneFlow" style="display:none"></div>
+      <div id="paneMap" style="display:none"></div>
       <div id="paneRes" style="display:none">
         <div id="loadErr"></div>
         <div id="summary" class="status"></div>
@@ -340,7 +387,7 @@ const I18N = {
     help_st:'テスト用プレイヤーにさせる動きを順に並べます。シナリオから「部品を呼ぶ」で使えます。',
     help_sc:'上から順に実行されます。青い枠は「部品を呼ぶ」(クリックでその部品へ)、ほかはその場の動き・コマンド・待ち時間です。左のチェックで一部だけ流せます。',
     s_call:'部品を呼ぶ', s_do:'プレイヤーの動き', s_run:'コマンド', s_wait:'待つ', s_raw:'その他(JSON)',
-    add_call:'+ 部品を呼ぶ', add_do:'+ プレイヤーの動き', add_run:'+ コマンド', add_wait:'+ 待つ', no_steps:'まだ段がありません。下のボタンで足してください。',
+    add_call:'+ 部品を呼ぶ', add_do:'+ プレイヤーの動き', add_run:'+ コマンド', add_wait:'+ 待つ', no_steps:'まだ段がありません。上のコンソールで試したコマンドや動きを「＋ 部品に足す」で入れるか、下のボタンで足してください。',
     call_sum:(l,k)=>`部品「${l}」を呼ぶ(${k})`, run_sum:(c,a)=>`/${c}` + (a ? `(${a} として実行)` : ''), wait_sum:(s)=>`${s} 秒待つ(この間も毎tick・リピートは動く)`,
     raw_sum:'JSON で書かれた段', unknown_mod:(id)=>`見つからない部品「${id}」`, steps_n:(a,b)=>a===b?`段 ${a}`:`段 ${a}–${b}`, chk_title:'チェックすると「チェックした段だけ流す」に入ります',
     l_skind:'段の種類', l_module:'呼ぶ部品', l_player:'プレイヤー', l_action:'動き', l_as:'誰として実行(空ならサーバー)', l_secs:'秒', l_wait_after:'後で待つ秒数',
@@ -369,6 +416,25 @@ const I18N = {
     nothing_sel:'左の一覧から部品かシナリオを選んでください。', new_title:'新しいゲーム', new_sc:'シナリオ', new_fn:'新しい関数', new_bl:'新しいコマンドブロック', new_st:'新しい動き',
     eff:'効果 ', below:'名前の下: ', teamside:'チームのサイドバー: ', sounds:'音: ', window:'画面', confirm_new:'今の変更を捨てて新しいプロジェクトにしますか?', confirm_open:'保存していない変更があります。開きますか?',
     sc_steps:(n)=>`${n} 段`, res_ok:(a,b)=>`✓ ${a}/${b}`, res_ng:(a,b)=>`✗ ${a}/${b}`, preview_more:(n)=>`…ほか ${n} 行`,
+    con_title:'コンソール', con_cmd:'コマンド', con_act:'プレイヤーの動き', con_ph:'コマンドを打って Enter(例: say hello)・↑↓で前に打ったもの', con_as_server:'サーバーとして実行', con_as:(n)=>`${n} として実行`,
+    con_run:'▶ 実行', con_add:'＋ 部品に足す', con_hist:'これまでに打ったもの', con_hist_empty:'まだ何も打っていません', con_recall:'クリックで入力欄に戻す', con_view:'この画面を見る', con_running:'実行中…',
+    con_reply:'サーバーの返事', con_seen:'プレイヤーが見たもの', con_empty:'コマンド(または動き)を入れてください',
+    con_help:'ゲームの中のチャット欄と同じように、ここでコマンドやプレイヤーの動きを1つずつ試せます。うまくいったら「部品に足す」で、左で選んでいる関数・シナリオ・動きの部品に入れて、自分のゲームを組み立てます。',
+    con_noserver:'マイクラのサーバーが動いていません。「テストを流す」の「サーバー起動」を押してから打ってください。', con_noapi:'この機能は UI サーバーの再起動のあとで使えます。少し待ってからもう一度押してください。',
+    con_add_sel:'足す先(関数・コマンドブロック・プレイヤーの動きの部品かシナリオ)を左の一覧で選んでください。', con_act_fn:'プレイヤーの動きは関数やコマンドブロックには入れられません。シナリオか「プレイヤーの動き」の部品を選んでください。',
+    con_added_fn:(l)=>`関数「${l}」の最後に1行足しました`, con_added_sc:(l)=>`シナリオ「${l}」の最後に段を足しました`, con_added_st:(l)=>`「${l}」の最後に動きを足しました`, con_added_bl:(l)=>`「${l}」の最後にチェーンのブロックを足しました`,
+    b_import:'データパックを取り込む', import_ask:'取り込むデータパックのフォルダの場所(pack.mcmeta がある所・zip は先に展開)', import_name:'プロジェクトの保存名', importing:'取り込んでいます…',
+    imported:(n,c)=>`取り込みました: ${n}(部品 ${c} 個・関数ごとに1つ)`, fn_empty:'まだコマンドがありません。上のコンソールで1つずつ試して「＋ 部品に足す」で入れるか、下の欄に直接書いてください(1行に1コマンド)。', new_setup:'準備',
+    tab_map:'全体の配置図', mp_help:'プロジェクト全体を1枚で見ます。上はワールドに置くコマンドブロックの列すべてを上から見た図、下は部品どうしの「呼ぶ・動かす」のつながりです。列や部品をクリックすると編集を開きます。',
+    mp_map_h:'コマンドブロックの配置(上から見た図)', mp_map_help:'右が東(+X)・下が南(+Z)。ホイールで拡大・ドラッグで移動。離れた列の間は ≈ で詰めて描きます。', mp_side_h:'横から見た図(高さ Y)', mp_side_help:(a)=>`横が ${a}・上が高い(+Y)。`,
+    mp_side:'横から見た図も出す', mp_fit:'全体を表示', mp_no_blocks:'このプロジェクトにはコマンドブロックの列がありません(関数だけ)。', mp_gap:(n)=>`${n} ブロック空き`,
+    mp_graph_h:'つながりの図(誰が誰を呼ぶか・動かすか)', mp_graph_help:'左から右へ「呼ぶ側 → 呼ばれる側」。実線=function で呼ぶ・点線=schedule(後で呼ぶ)・赤い線=ぐるぐる回る呼び出し(循環)。',
+    mp_overlay:'シナリオを重ねる', mp_overlay_none:'— 重ねない —', mp_group:'フォルダごとにまとめる', mp_expand_all:'全部ひらく', mp_collapse_all:'全部たたむ',
+    n_tick:'毎 tick (tick タグ)', n_load:'読み込み時 (load タグ)', n_button:'ボタン/トリガー', n_repeat:'毎 tick(リピート)', n_scen:'シナリオ', n_missing:'存在しない関数',
+    n_grp:(n)=>`${n} 個・クリックでひらく`, n_grp_open:'クリックでたたむ', uncalled:'呼ばれていない', cycle:'循環', e_schedule:'schedule', e_rs:'RS',
+    mp_iss_uncalled:'呼ばれていない関数', mp_iss_missing:'存在しない関数を呼んでいる所', mp_iss_cycle:'循環(ぐるぐる呼び合う)', mp_iss_none:'問題は見つかりませんでした(呼ばれていない関数・存在しない関数・循環なし)',
+    mp_ov_note:(n)=>`番号 = シナリオの中で呼ぶ順(${n} か所)。薄い色の部品はこのシナリオでは動きません。`, mp_not_fn:'(関数ではない部品)',
+    lg_call:'function で呼ぶ', lg_sched:'schedule で後から呼ぶ', lg_cycle:'循環', lg_scen:'シナリオから呼ぶ', lg_src:'自動で動かす元',
   },
   en: {
     subtitle:'Command editor', back_main:'← Main page (server, players, one-off scripts)', lang:'Language',
@@ -400,7 +466,7 @@ const I18N = {
     help_st:'Actions for the test players, in order. Use it from a scenario with "Call a part".',
     help_sc:'Runs from top to bottom. Blue-edged cards call a part (click to open it); the others are actions, commands and waits right here. Tick the boxes to run only some steps.',
     s_call:'Call a part', s_do:'Player action', s_run:'Command', s_wait:'Wait', s_raw:'Other (JSON)',
-    add_call:'+ Call a part', add_do:'+ Player action', add_run:'+ Command', add_wait:'+ Wait', no_steps:'No steps yet. Add one with the buttons below.',
+    add_call:'+ Call a part', add_do:'+ Player action', add_run:'+ Command', add_wait:'+ Wait', no_steps:'No steps yet. Use "+ Add to part" in the console above after trying a command or action, or add one with the buttons below.',
     call_sum:(l,k)=>`Call part "${l}" (${k})`, run_sum:(c,a)=>`/${c}` + (a ? ` (as ${a})` : ''), wait_sum:(s)=>`Wait ${s} s (tick functions and repeat blocks keep running)`,
     raw_sum:'Step written as JSON', unknown_mod:(id)=>`Unknown part "${id}"`, steps_n:(a,b)=>a===b?`step ${a}`:`steps ${a}–${b}`, chk_title:'Checked steps go into "Run checked steps only"',
     l_skind:'Step kind', l_module:'Part to call', l_player:'Player', l_action:'Action', l_as:'Run as (empty = the server)', l_secs:'Seconds', l_wait_after:'Wait after (s)',
@@ -429,6 +495,25 @@ const I18N = {
     nothing_sel:'Select a part or a scenario on the left.', new_title:'New game', new_sc:'Scenario', new_fn:'New function', new_bl:'New command blocks', new_st:'New actions',
     eff:'Effect ', below:'Below names: ', teamside:'Team sidebar: ', sounds:'Sounds: ', window:'Window', confirm_new:'Discard the current changes and start a new project?', confirm_open:'You have unsaved changes. Open anyway?',
     sc_steps:(n)=>`${n} step${n===1?'':'s'}`, res_ok:(a,b)=>`✓ ${a}/${b}`, res_ng:(a,b)=>`✗ ${a}/${b}`, preview_more:(n)=>`...${n} more`,
+    con_title:'Console', con_cmd:'Command', con_act:'Player action', con_ph:'Type a command and press Enter (e.g. say hello); up/down for earlier ones', con_as_server:'Run as the server', con_as:(n)=>`Run as ${n}`,
+    con_run:'▶ Run', con_add:'+ Add to part', con_hist:'History', con_hist_empty:'Nothing typed yet', con_recall:'Click to put it back in the input', con_view:'See this screen', con_running:'Running...',
+    con_reply:'Server reply', con_seen:'Players saw', con_empty:'Type a command (or set up an action) first',
+    con_help:'Like the in-game chat: try commands and player actions one at a time here. When one works, "Add to part" puts it into the function, scenario or actions part selected on the left, so you build your own game step by step.',
+    con_noserver:'The Minecraft server is not running. Press "Start server" under "Run a test" first.', con_noapi:'This needs the UI server to be restarted. Wait a moment and try again.',
+    con_add_sel:'Select where to add it on the left (a function, command blocks, player actions or a scenario).', con_act_fn:'Player actions cannot go into a function or command blocks. Select a scenario or a player-actions part.',
+    con_added_fn:(l)=>`Added a line at the end of function "${l}"`, con_added_sc:(l)=>`Added a step at the end of scenario "${l}"`, con_added_st:(l)=>`Added an action at the end of "${l}"`, con_added_bl:(l)=>`Added a chain block at the end of "${l}"`,
+    b_import:'Import a data pack', import_ask:'Folder of the data pack to import (where pack.mcmeta is; unzip first)', import_name:'Save name for the project', importing:'Importing...',
+    imported:(n,c)=>`Imported: ${n} (${c} parts, one per function)`, fn_empty:'No commands yet. Try them one at a time in the console above and press "+ Add to part", or type them straight into the box below (one per line).', new_setup:'Setup',
+    tab_map:'Whole layout', mp_help:'The whole project on one page. Top: every command block line placed in the world, seen from above. Bottom: which part calls or starts which. Click a line or a part to edit it.',
+    mp_map_h:'Command block placement (seen from above)', mp_map_help:'Right = east (+X), down = south (+Z). Wheel to zoom, drag to pan. Long empty stretches between lines are shortened and marked ≈.', mp_side_h:'Seen from the side (height Y)', mp_side_help:(a)=>`Across = ${a}, up = higher (+Y).`,
+    mp_side:'Also show the side view', mp_fit:'Fit all', mp_no_blocks:'This project has no command block lines (functions only).', mp_gap:(n)=>`${n} blocks skipped`,
+    mp_graph_h:'Connection graph (who calls or starts whom)', mp_graph_help:'Left to right: caller → callee. Solid = called with function, dashed = schedule (called later), red = calls that go round in a loop (cycle).',
+    mp_overlay:'Overlay a scenario', mp_overlay_none:'— none —', mp_group:'Group by folder', mp_expand_all:'Expand all', mp_collapse_all:'Collapse all',
+    n_tick:'Every tick (tick tag)', n_load:'On load (load tag)', n_button:'Button / trigger', n_repeat:'Every tick (repeat)', n_scen:'Scenario', n_missing:'Function does not exist',
+    n_grp:(n)=>`${n} parts, click to expand`, n_grp_open:'click to collapse', uncalled:'not called', cycle:'cycle', e_schedule:'schedule', e_rs:'RS',
+    mp_iss_uncalled:'Functions nobody calls', mp_iss_missing:'Calls to functions that do not exist', mp_iss_cycle:'Cycles (parts calling each other in a loop)', mp_iss_none:'No problems found (no uncalled or missing functions, no cycles)',
+    mp_ov_note:(n)=>`Numbers = order the scenario calls them (${n} calls). Faded parts do not run in this scenario.`, mp_not_fn:'(a part that is not a function)',
+    lg_call:'called with function', lg_sched:'called later with schedule', lg_cycle:'cycle', lg_scen:'called from a scenario', lg_src:'starts it automatically',
   },
 };
 const LANG = () => ($('lang').value === 'en' ? 'en' : 'ja');
@@ -605,6 +690,7 @@ function setUrl() {
     q.delete('module'); q.delete('scenario');
     if (SEL) q.set(SEL.type, SEL.id);
     q.set('lang', LANG());
+    if (TAB === 'map') { q.set('view', 'map'); if (MAPOV) q.set('overlay', MAPOV); else q.delete('overlay'); } else { if (q.get('view') === 'map') q.delete('view'); q.delete('overlay'); }
     history.replaceState(null, '', '?' + q.toString());
   } catch (e) { /* ignore */ }
 }
@@ -677,6 +763,7 @@ function headerFields(obj, isModule) {
 // function: a line editor with numbers
 function renderFunctionEditor(pane, m) {
   pane.appendChild(h('p', { class:'help', style:'margin-top:8px' }, t('help_fn')));
+  if (!(m.lines || []).some((l) => String(l).trim())) pane.appendChild(h('div', { class:'empty', style:'margin-bottom:8px' }, t('fn_empty')));
   pane.appendChild(h('div', { class:'row', style:'margin:0 0 6px' },
     h('label', { class:'check' }, h('input', { type:'checkbox', checked: !!m.tick, onchange:(e) => { setKey(m, 'tick', e.target.checked || undefined); renderLists(); } }), t('l_tick')),
     h('label', { class:'check' }, h('input', { type:'checkbox', checked: !!m.load, onchange:(e) => { setKey(m, 'load', e.target.checked || undefined); renderLists(); } }), t('l_load'))));
@@ -1278,10 +1365,10 @@ async function openProject(name, keepSel) {
 function newProject() {
   if (DIRTY && !confirm(t('confirm_new'))) return;
   P = { version: $('pVer').value || '1.20.1', title: t('new_title'), namespace:'game', player_names:['Alice', 'Bob'],
-    modules:[{ id:'setup', label: LANG() === 'en' ? 'Setup' : '準備', kind:'function', load:true, lines:['scoreboard objectives add game dummy'] }],
-    scenarios:[{ id:'main', label: t('new_sc') + ' 1', steps:[{ call:'setup' }] }] };
+    modules:[{ id:'setup', label: t('new_setup'), kind:'function', lines:[] }],
+    scenarios:[{ id:'main', label: t('new_sc') + ' 1', steps:[] }] };
   NAME = 'untitled'; CHECK = null; LAST = []; LASTRUN = null; LOADERR = [];
-  SEL = { type:'module', id:'setup' }; fillProjectBar(); dirty(true); renderAll(); setUrl();
+  SEL = { type:'module', id:'setup' }; fillProjectBar(); dirty(true); status(''); renderAll(); setUrl();
 }
 async function runCheck(quiet) {
   try {
@@ -1300,6 +1387,498 @@ async function runCheck(quiet) {
   } catch (e) { status(t('err') + e.message, 'ng'); }
 }
 
+// ---------------- whole layout (map + connection graph) ----------------
+let MAPSIDE = false;          // show the side view too
+let MAPOV = '';               // scenario overlaid on the map/graph
+let MAPGROUP = null;          // null = automatic (group when many parts)
+const MAPEXP = new Set();     // expanded folder prefixes in the graph
+function svgText(x, y, str, attrs) { return s('text', Object.assign({ x, y, style:'fill:var(--ink)', 'font-size':'11' }, attrs || {}), str); }
+function textW(str, fs) { let w = 0; for (const ch of String(str)) w += /[　-鿿＀-￯]/.test(ch) ? fs : fs * 0.6; return w; }
+function clip(str, fs, max) { str = String(str); if (textW(str, fs) <= max) return str; let o = ''; for (const ch of str) { if (textW(o + ch + '…', fs) > max) break; o += ch; } return o + '…'; }
+function cmdRefs(text) {
+  const ns = (P.namespace || 'game').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const out = [];
+  for (const x of String(text || '').matchAll(new RegExp('(schedule\\s+)?function\\s+' + ns + ':([a-z0-9_./-]+)', 'g'))) out.push({ id: x[2].replace(/[./]+$/, ''), sched: !!x[1] });
+  return out;
+}
+function stepTexts(st) {
+  const out = [];
+  if (typeof st.run === 'string') out.push(st.run);
+  if (st.do === 'command' && st.text) out.push(st.text);
+  if (Array.isArray(st.function)) out.push(...st.function); else if (typeof st.function === 'string') out.push(st.function);
+  if (Array.isArray(st.blocks)) for (const b of st.blocks) out.push(b.cmd || '');
+  return out;
+}
+// raw graph over modules, scenarios and the special sources
+function buildGraph() {
+  const N = new Map(); const E = new Map();
+  const node = (id, o) => { if (!N.has(id)) N.set(id, Object.assign({ id }, o)); return N.get(id); };
+  for (const m of mods()) node('m:' + m.id, { kind:'module', m, mid:m.id });
+  const isFn = (id) => { const m = modById(id); return m && kindOf(m) === 'function'; };
+  const edge = (from, to, type, label) => { const k = from + '|' + to + '|' + type; if (!E.has(k)) E.set(k, { from, to, type, label, n:0 }); E.get(k).n++; };
+  const ref = (from, r) => {
+    const type = r.sched ? 'sched' : 'call', label = r.sched ? t('e_schedule') : null;
+    if (isFn(r.id)) edge(from, 'm:' + r.id, type, label);
+    else { node('x:' + r.id, { kind:'missing', mid:r.id, notFn: !!modById(r.id) }); edge(from, 'x:' + r.id, type, label); }
+  };
+  const callMod = (from, id, type) => { if (modById(id)) edge(from, 'm:' + id, type); else { node('x:' + id, { kind:'missing', mid:id }); edge(from, 'x:' + id, type); } };
+  for (const m of mods()) {
+    const me = 'm:' + m.id, k = kindOf(m);
+    if (k === 'function') {
+      for (const l of m.lines || []) if (!String(l).trim().startsWith('#')) cmdRefs(l).forEach((r) => ref(me, r));
+      if (m.tick) { node('s:tick', { kind:'src', src:'tick' }); edge('s:tick', me, 'src'); }
+      if (m.load) { node('s:load', { kind:'src', src:'load' }); edge('s:load', me, 'src'); }
+    } else if (k === 'blocks') {
+      (m.blocks || []).forEach((b) => cmdRefs(b.cmd).forEach((r) => ref(me, r)));
+      const tr = trigger(m);
+      if (tr === 'button' || tr === 'redstone_block') { node('s:btn', { kind:'src', src:'btn' }); edge('s:btn', me, 'src', tr === 'redstone_block' ? t('e_rs') : null); }
+      if ((m.blocks || []).some((b, i) => btype(b, i) === 'repeat')) { node('s:rep', { kind:'src', src:'rep' }); edge('s:rep', me, 'src'); }
+    } else {
+      for (const st of m.steps || []) { if ('call' in st) callMod(me, st.call, 'call'); stepTexts(st).forEach((x) => cmdRefs(x).forEach((r) => ref(me, r))); }
+    }
+  }
+  for (const sc of scens()) {
+    const me = 'c:' + sc.id; node(me, { kind:'scen', sc });
+    for (const st of sc.steps || []) { if ('call' in st) callMod(me, st.call, 'scen'); stepTexts(st).forEach((x) => cmdRefs(x).forEach((r) => ref(me, r))); }
+  }
+  // cycles: strongly connected components (Tarjan)
+  const adj = new Map([...N.keys()].map((k) => [k, []]));
+  for (const e of E.values()) adj.get(e.from).push(e.to);
+  let idx = 0; const ix = new Map(), low = new Map(), on = new Set(), stk = [], comp = new Map(), comps = [];
+  const strong = (v) => {
+    ix.set(v, idx); low.set(v, idx); idx++; stk.push(v); on.add(v);
+    for (const w of adj.get(v)) { if (!ix.has(w)) { strong(w); low.set(v, Math.min(low.get(v), low.get(w))); } else if (on.has(w)) low.set(v, Math.min(low.get(v), ix.get(w))); }
+    if (low.get(v) === ix.get(v)) { const c = []; let w; do { w = stk.pop(); on.delete(w); c.push(w); comp.set(w, comps.length); } while (w !== v); comps.push(c.reverse()); }
+  };
+  for (const v of N.keys()) if (!ix.has(v)) strong(v);
+  const cyc = comps.filter((c) => c.length > 1 || adj.get(c[0]).includes(c[0]));
+  const inCycle = new Set(cyc.flat());
+  for (const e of E.values()) e.cycle = inCycle.has(e.from) && comp.get(e.from) === comp.get(e.to);
+  const incoming = new Set([...E.values()].map((e) => e.to));
+  for (const n of N.values()) n.uncalled = n.kind === 'module' && kindOf(n.m) === 'function' && !n.m.tick && !n.m.load && !incoming.has(n.id);
+  return { N, E, cyc, inCycle };
+}
+// scenario overlay: which raw nodes it reaches, and the call order numbers
+function overlayInfo(G) {
+  const sc = MAPOV && scById(MAPOV); if (!sc) return null;
+  const nums = new Map(); let n = 0;
+  const add = (id) => { if (!G.N.has(id)) return; if (!nums.has(id)) nums.set(id, []); nums.get(id).push(++n); };
+  for (const st of sc.steps || []) {
+    if ('call' in st) add((modById(st.call) ? 'm:' : 'x:') + st.call);
+    stepTexts(st).forEach((x) => cmdRefs(x).forEach((r) => add((modById(r.id) && kindOf(modById(r.id)) === 'function' ? 'm:' : 'x:') + r.id)));
+  }
+  const reach = new Set(['c:' + sc.id, ...nums.keys()]); const q = [...nums.keys()];
+  // loading the pack also starts the tick/load functions; placed lines bring their trigger/repeat sources
+  for (const e of G.E.values()) if (e.from === 's:tick' || e.from === 's:load') { reach.add(e.from); if (!reach.has(e.to)) { reach.add(e.to); q.push(e.to); } }
+  for (const id of [...nums.keys()]) { const m = G.N.get(id).m; if (m && kindOf(m) === 'blocks') for (const e of G.E.values()) if (e.to === id && e.from.startsWith('s:')) reach.add(e.from); }
+  while (q.length) { const v = q.shift(); for (const e of G.E.values()) if (e.from === v && !reach.has(e.to)) { reach.add(e.to); q.push(e.to); } }
+  return { nums, reach, n };
+}
+function grouping(G) {
+  const on = MAPGROUP === null ? mods().length > 25 : MAPGROUP;
+  const disp = new Map();
+  for (const n of G.N.values()) {
+    let key = n.id;
+    if (on && n.kind === 'module' && n.mid.includes('/')) {
+      const segs = n.mid.split('/'); let pre = '';
+      for (let i = 0; i < segs.length - 1; i++) { const p2 = pre + segs[i] + '/'; if (!MAPEXP.has(p2)) { key = 'g:' + p2; break; } pre = p2; }
+    }
+    disp.set(n.id, key);
+  }
+  // a folder holding a single part is shown as that part
+  const cnt = {}; for (const k of disp.values()) cnt[k] = (cnt[k] || 0) + 1;
+  for (const [id, k] of disp) if (k.startsWith('g:') && cnt[k] === 1) disp.set(id, id);
+  return { on, disp };
+}
+function renderMap() {
+  const pane = $('paneMap'); pane.innerHTML = '';
+  if (!P) return;
+  if (MAPOV && !scById(MAPOV)) MAPOV = '';
+  const G = buildGraph(); const OV = overlayInfo(G);
+  pane.appendChild(h('p', { class:'help' }, t('mp_help')));
+  const ovSel = h('select', { style:'width:auto', onchange:(e) => { MAPOV = e.target.value; setUrl(); renderMap(); } },
+    h('option', { value:'' }, t('mp_overlay_none')), scens().map((sc) => h('option', { value:sc.id, selected: sc.id === MAPOV }, sc.label || sc.id)));
+  pane.appendChild(h('div', { class:'mapbar' }, h('label', { class:'check' }, h('b', {}, t('mp_overlay')), ovSel),
+    OV ? h('span', { class:'status' }, t('mp_ov_note', OV.n)) : null));
+  // ---- 1. placement map
+  const lines = mods().filter((m) => kindOf(m) === 'blocks' && (m.blocks || []).length);
+  const box = h('div', { class:'mapbox' }, h('h3', {}, t('mp_map_h')));
+  if (!lines.length) box.appendChild(h('div', { class:'empty' }, t('mp_no_blocks')));
+  else {
+    box.appendChild(h('p', { class:'vh' }, t('mp_map_help')));
+    const tops = mapSvg(lines, 'top', OV);
+    box.appendChild(h('div', { class:'row', style:'margin-bottom:6px' },
+      h('button', { class:'mini', onclick:() => tops.fit() }, '⤢ ' + t('mp_fit')),
+      h('label', { class:'check' }, h('input', { type:'checkbox', checked: MAPSIDE, onchange:(e) => { MAPSIDE = e.target.checked; renderMap(); } }), t('mp_side'))));
+    box.appendChild(tops.el);
+    if (MAPSIDE) { const sv = mapSvg(lines, 'side', OV); box.appendChild(h('h3', { style:'margin-top:10px' }, t('mp_side_h'))); box.appendChild(h('p', { class:'vh' }, t('mp_side_help', sv.axis))); box.appendChild(sv.el); }
+    box.appendChild(h('div', { class:'legend' },
+      h('span', {}, h('span', { class:'sw', style:'background:var(--imp)' }), t('lg_imp')), h('span', {}, h('span', { class:'sw', style:'background:var(--chn)' }), t('lg_chn')),
+      h('span', {}, h('span', { class:'sw', style:'background:var(--rep)' }), t('lg_rep')), h('span', {}, '? ' + t('lg_cond')),
+      h('span', {}, h('span', { class:'sw', style:'background:#c62828' }), t('lg_rsb')), h('span', {}, h('span', { class:'sw', style:'background:#9a9a9a;height:9px' }), t('lg_btn'))));
+  }
+  pane.appendChild(box);
+  // ---- 2. connection graph
+  const gb = h('div', { class:'mapbox' }, h('h3', {}, t('mp_graph_h')), h('p', { class:'vh' }, t('mp_graph_help')));
+  const GR = grouping(G);
+  if (mods().some((m) => m.id.includes('/'))) gb.appendChild(h('div', { class:'row', style:'margin-bottom:6px' },
+    h('label', { class:'check' }, h('input', { type:'checkbox', checked: GR.on, onchange:(e) => { MAPGROUP = e.target.checked; renderMap(); } }), t('mp_group')),
+    GR.on ? h('button', { class:'mini', onclick:() => { mods().forEach((m) => { const sg = m.id.split('/'); for (let i = 1; i < sg.length; i++) MAPEXP.add(sg.slice(0, i).join('/') + '/'); }); renderMap(); } }, t('mp_expand_all')) : null,
+    GR.on ? h('button', { class:'mini', onclick:() => { MAPEXP.clear(); renderMap(); } }, t('mp_collapse_all')) : null));
+  gb.appendChild(h('div', { class:'gscroll' }, graphSvg(G, GR, OV)));
+  gb.appendChild(h('div', { class:'legend' },
+    h('span', {}, h('span', { class:'sw', style:'background:#4a6fa5' }), t('k_function')), h('span', {}, h('span', { class:'sw', style:'background:var(--imp)' }), t('k_blocks')),
+    h('span', {}, h('span', { class:'sw', style:'background:#2f8f8f' }), t('k_steps')), h('span', {}, h('span', { class:'sw', style:'background:#555' }), t('n_scen')),
+    h('span', {}, '── ' + t('lg_call')), h('span', { style:'color:#3a7bd5' }, '- - ' + t('lg_sched')), h('span', {}, '··· ' + t('lg_src')), h('span', { style:'color:#c62828' }, '↻ ── ' + t('lg_cycle')),
+    h('span', {}, h('span', { class:'sw', style:'border:2px dashed #d08a00' }), t('uncalled')), h('span', {}, h('span', { class:'sw', style:'background:rgba(198,40,40,.15);border:2px solid #c62828' }), t('n_missing'))));
+  // issues
+  const iss = h('div', { class:'issues' });
+  const unc = [...G.N.values()].filter((n) => n.uncalled);
+  const miss = [...G.N.values()].filter((n) => n.kind === 'missing');
+  const open = (id) => { TAB = 'edit'; select('module', id); };
+  const nm = (id) => { const n = G.N.get(id); if (!n) return id; if (n.kind === 'module') return n.mid; if (n.kind === 'scen') return t('n_scen') + ': ' + (n.sc.label || n.sc.id); if (n.kind === 'src') return t({ tick:'n_tick', load:'n_load', btn:'n_button', rep:'n_repeat' }[n.src]); return n.mid || id; };
+  if (unc.length) iss.appendChild(h('div', {}, h('b', { class:'warn' }, t('mp_iss_uncalled') + ` (${unc.length}): `), unc.map((n) => h('span', { class:'chip', onclick:() => open(n.mid) }, n.mid))));
+  if (miss.length) iss.appendChild(h('div', {}, h('b', { class:'ng' }, t('mp_iss_missing') + ': '), miss.map((n) => {
+    const froms = [...G.E.values()].filter((e) => e.to === n.id).map((e) => nm(e.from));
+    return h('span', { class:'chip', style:'border-color:var(--ng);color:var(--ng)' }, `${P.namespace || 'game'}:${n.mid}${n.notFn ? ' ' + t('mp_not_fn') : ''} ← ${froms.join(', ')}`);
+  })));
+  if (G.cyc.length) iss.appendChild(h('div', {}, h('b', { class:'ng' }, t('mp_iss_cycle') + ': '), G.cyc.map((c) => h('span', { class:'chip', style:'border-color:var(--ng)' }, c.map(nm).join(' → ') + ' → ' + nm(c[0])))));
+  if (!unc.length && !miss.length && !G.cyc.length) iss.appendChild(h('div', { class:'ok' }, '✓ ' + t('mp_iss_none')));
+  gb.appendChild(iss);
+  pane.appendChild(gb);
+}
+// axis with long empty stretches squeezed (so lines far apart stay visible)
+function squeeze(vals) {
+  const u = [...new Set(vals)].sort((a, b) => a - b); const pos = new Map(); const breaks = []; let p = 0;
+  u.forEach((v, i) => { if (i) { const d = v - u[i - 1]; if (d <= 6) p += d; else { breaks.push({ at: p + 1, gap: d - 1 }); p += 2; } } pos.set(v, p); });
+  return { f: (v) => pos.get(v), len: p + 1, breaks, ticks: u };
+}
+function mapSvg(lines, view, OV) {
+  const C = 34, PAD = 30, TOP = PAD + 30;
+  const items = lines.map((m) => {
+    const spots = layout(m); const tr = trigger(m); const [x0, y0, z0, f0] = spots[0]; const d0 = DIRS[f0] || DIRS.east;
+    return { m, spots, rs: tr === 'redstone_block' ? [x0 - d0[0], y0 - d0[1], z0 - d0[2]] : null, btn: tr === 'button' ? [x0, y0 + 1, z0] : null };
+  });
+  const all = items.flatMap((it) => it.spots.map((p) => p.slice(0, 3)).concat([it.rs, it.btn].filter(Boolean)));
+  const ext = (k) => Math.max(...all.map((p) => p[k])) - Math.min(...all.map((p) => p[k]));
+  const across = ext(2) > ext(0) ? 2 : 0;
+  const hk = view === 'top' ? 0 : across, vk = view === 'top' ? 2 : 1, dk = view === 'top' ? 1 : 2 - across;
+  const HA = squeeze(all.map((p) => p[hk])), VA = squeeze(all.map((p) => p[vk]));
+  const vflip = view !== 'top';  // side view: higher Y at the top
+  const col = (p) => HA.f(p[hk]), row = (p) => vflip ? VA.len - 1 - VA.f(p[vk]) : VA.f(p[vk]);
+  const stack = {};
+  all.forEach((p) => { const k = col(p) + ',' + row(p); (stack[k] = stack[k] || new Set()).add(p[dk]); });
+  for (const k in stack) stack[k] = [...stack[k]].sort((a, b) => a - b);
+  const xy = (p) => { const k = col(p) + ',' + row(p); const off = stack[k].indexOf(p[dk]) * 8; return [PAD + col(p) * C + off, TOP + row(p) * C - off]; };
+  let W = PAD + HA.len * C + 24; const H = TOP + VA.len * C + 16;
+  const svg = s('svg', { class:'mapsvg', viewBox:`0 0 ${W} ${H}`, role:'img' });
+  const sty = 'fill:var(--sub);font-family:ui-monospace,Consolas,monospace';
+  svg.appendChild(s('rect', { x: PAD, y: TOP, width: HA.len * C, height: VA.len * C, fill:'none', style:'stroke:var(--line)' }));
+  for (let c = 1; c < HA.len; c++) svg.appendChild(s('line', { x1: PAD + c * C, y1: TOP, x2: PAD + c * C, y2: TOP + VA.len * C, stroke:'rgba(127,127,127,.12)' }));
+  for (let r = 1; r < VA.len; r++) svg.appendChild(s('line', { x1: PAD, y1: TOP + r * C, x2: PAD + HA.len * C, y2: TOP + r * C, stroke:'rgba(127,127,127,.12)' }));
+  const hn = ['X', 'Y', 'Z'][hk], vn = ['X', 'Y', 'Z'][vk];
+  HA.ticks.forEach((v) => svg.appendChild(s('text', { x: PAD + HA.f(v) * C + C / 2, y: PAD + 2, 'text-anchor':'middle', 'font-size':'9', style:sty }, v)));
+  VA.ticks.forEach((v) => { const r = vflip ? VA.len - 1 - VA.f(v) : VA.f(v); svg.appendChild(s('text', { x: PAD - 3, y: TOP + r * C + C / 2 + 3, 'text-anchor':'end', 'font-size':'9', style:sty }, v)); });
+  svg.appendChild(s('text', { x: 2, y: 10, 'font-size':'10', 'font-weight':'bold', style:sty }, hn + '→  ' + vn + (vflip ? '↑' : '↓')));
+  for (const b of HA.breaks) { const x = PAD + b.at * C; svg.appendChild(s('rect', { x: x + 4, y: TOP, width: C - 8, height: VA.len * C, fill:'rgba(127,127,127,.12)' })); svg.appendChild(s('text', { x: x + C / 2, y: TOP + VA.len * C / 2, 'text-anchor':'middle', 'font-size':'14', style:sty }, '≈', s('title', {}, t('mp_gap', b.gap)))); }
+  for (const b of VA.breaks) { const r = vflip ? VA.len - 1 - b.at : b.at; const y = TOP + r * C; svg.appendChild(s('rect', { x: PAD, y: y + 4, width: HA.len * C, height: C - 8, fill:'rgba(127,127,127,.12)' })); svg.appendChild(s('text', { x: PAD + 4, y: y + C / 2 + 4, 'font-size':'11', style:sty }, '≈ ' + t('mp_gap', b.gap))); }
+  const lbl = s('g', {}); let right = W;
+  const openLine = (id) => { if (svg._moved) return; TAB = 'edit'; select('module', id); };
+  for (const it of items) {
+    const m = it.m; const inOv = !OV || OV.reach.has('m:' + m.id);
+    const g = s('g', { class:'ln', opacity: inOv ? 1 : 0.3 });
+    const pts = it.spots.map((p) => xy(p.slice(0, 3))).concat([it.rs, it.btn].filter(Boolean).map(xy));
+    const x1 = Math.min(...pts.map((p) => p[0])) - 3, y1 = Math.min(...pts.map((p) => p[1])) - 3, x2 = Math.max(...pts.map((p) => p[0])) + C + 3, y2 = Math.max(...pts.map((p) => p[1])) + C + 3;
+    const hasRep = (m.blocks || []).some((b, k) => btype(b, k) === 'repeat');
+    g.appendChild(s('rect', { class:'lnbox', x: x1, y: y1, width: x2 - x1, height: y2 - y1, rx: 6, fill:'rgba(127,127,127,.06)', stroke: hasRep ? '#7b55c7' : '#d9772b', 'stroke-width':1.5, 'stroke-dasharray':'5 3' }));
+    if (it.rs) { const [px, py] = xy(it.rs); g.appendChild(s('rect', { x: px + 3, y: py + 3, width: C - 6, height: C - 6, rx: 3, fill:'#c62828', stroke:'#7f0000', 'stroke-width':1.5 })); g.appendChild(s('text', { x: px + C / 2, y: py + C / 2 + 4, 'text-anchor':'middle', 'font-size':'10', fill:'#fff', 'font-weight':'bold' }, 'RS')); }
+    const cs = it.spots.map((p) => { const [px, py] = xy(p.slice(0, 3)); return [px + C / 2, py + C / 2]; });
+    if (cs.length > 1) g.appendChild(s('polyline', { points: cs.map((c) => c.join(',')).join(' '), fill:'none', stroke:'#888', 'stroke-width':1.5, 'stroke-dasharray':'3 3' }));
+    it.spots.map((p, k) => k).sort((a, b) => it.spots[a][dk] - it.spots[b][dk]).forEach((k) => {
+      const b = m.blocks[k], p = it.spots[k], ty = btype(b, k), au = bauto(b, k); const [px, py] = xy(p.slice(0, 3));
+      g.appendChild(s('rect', { x: px + 2, y: py + 2, width: C - 4, height: C - 4, rx: 3, fill: KCOL[ty], stroke: au ? '#1f5f35' : '#c62828', 'stroke-width': 2, 'stroke-dasharray': au ? null : '4 2' }));
+      g.appendChild(s('text', { x: px + C / 2, y: py + C / 2 + 6, 'text-anchor':'middle', 'font-size':'16', fill:'#fff', 'font-weight':'bold' }, glyph(p[3], view, across === 0 ? 'x' : 'z')));
+      g.appendChild(s('text', { x: px + 4, y: py + 11, 'font-size':'8', fill:'#fff' }, String(k + 1)));
+      if (b.conditional) g.appendChild(s('g', {}, s('rect', { x: px + C - 13, y: py + 4, width: 10, height: 10, rx: 2, fill:'#fff', stroke:'#222' }), s('text', { x: px + C - 8, y: py + 12, 'text-anchor':'middle', 'font-size':'8', fill:'#222', 'font-weight':'bold' }, '?')));
+      g.appendChild(s('title', {}, `${mlabel(m)} #${k + 1} ${t('t_' + ty)} (${p.slice(0, 3).join(' ')})\n${b.cmd || ''}`));
+    });
+    if (it.btn) { const [px, py] = xy(it.btn); g.appendChild(s('g', {}, view === 'top' ? s('rect', { x: px + C / 2 - 7, y: py + C / 2 - 5, width: 14, height: 10, rx: 2, fill:'#9a9a9a', stroke:'#333' }) : s('rect', { x: px + C / 2 - 9, y: py + C - 7, width: 18, height: 6, rx: 1, fill:'#9a9a9a', stroke:'#333' }), s('title', {}, t('lg_btn') + ` (${it.btn.join(' ')})`))); }
+    g.addEventListener('click', () => openLine(m.id));
+    const nums = OV && OV.nums.get('m:' + m.id);
+    const txt = (nums ? '#' + nums.join(',') + ' ' : '') + mlabel(m);
+    const tw = textW(txt, 11) + 10; right = Math.max(right, x1 + tw + 8);
+    const lg = s('g', { class:'ln', opacity: inOv ? 1 : 0.3 }, s('rect', { x: x1, y: y1 - 17, width: tw, height: 16, rx: 4, style:'fill:' + (nums ? 'var(--acc)' : (hasRep ? '#7b55c7' : '#d9772b')) }),
+      s('text', { x: x1 + 5, y: y1 - 5, 'font-size':'11', fill:'#fff', 'font-weight':'bold' }, txt), s('title', {}, `${mlabel(m)} (${m.id})`));
+    lg.addEventListener('click', () => openLine(m.id));
+    svg.appendChild(g); lbl.appendChild(lg);
+  }
+  svg.appendChild(lbl);
+  W = right; svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  // pan / zoom
+  const vb0 = [0, 0, W, H]; let vb = [...vb0];
+  const set = () => svg.setAttribute('viewBox', vb.join(' '));
+  const pt = (e) => { const q2 = svg.createSVGPoint(); q2.x = e.clientX; q2.y = e.clientY; return q2.matrixTransform(svg.getScreenCTM().inverse()); };
+  svg.addEventListener('wheel', (e) => { e.preventDefault(); const p = pt(e); const k = e.deltaY > 0 ? 1.15 : 1 / 1.15; vb = [p.x - (p.x - vb[0]) * k, p.y - (p.y - vb[1]) * k, vb[2] * k, vb[3] * k]; set(); }, { passive:false });
+  let drag = null;
+  svg.addEventListener('pointerdown', (e) => { drag = { x: e.clientX, y: e.clientY, vb: [...vb], sx: vb[2] / svg.getBoundingClientRect().width }; svg._moved = false; });
+  svg.addEventListener('pointermove', (e) => { if (!drag) return; const dx = e.clientX - drag.x, dy = e.clientY - drag.y; if (Math.abs(dx) + Math.abs(dy) > 4) { svg._moved = true; svg.style.cursor = 'grabbing'; } if (svg._moved) { vb = [drag.vb[0] - dx * drag.sx, drag.vb[1] - dy * drag.sx, vb[2], vb[3]]; set(); } });
+  const up = () => { drag = null; svg.style.cursor = ''; };
+  svg.addEventListener('pointerup', up); svg.addEventListener('pointerleave', up);
+  svg.style.maxHeight = (view === 'top' ? 560 : 320) + 'px';
+  svg.style.aspectRatio = `${W} / ${H}`;
+  svg.style.width = `min(100%, ${Math.round(W * 1.3)}px)`;
+  return { el: svg, fit: () => { vb = [...vb0]; set(); }, axis: ['X', 'Y', 'Z'][hk] };
+}
+function graphSvg(G, GR, OV) {
+  const NW = 200, NH = 40, GAP = 84, VG = 12, PAD = 16;
+  // display nodes (folders collapsed into one) and edges
+  const D = new Map(); const DE = new Map();
+  for (const n of G.N.values()) {
+    const k = GR.disp.get(n.id);
+    if (!D.has(k)) D.set(k, k.startsWith('g:') ? { id:k, kind:'grp', pre:k.slice(2), members:[] } : Object.assign({}, n, { id:k }));
+    if (k.startsWith('g:')) D.get(k).members.push(n);
+  }
+  for (const e of G.E.values()) {
+    const a = GR.disp.get(e.from), b = GR.disp.get(e.to); if (a === b && a.startsWith('g:')) continue;
+    const key = a + '|' + b + '|' + e.type;
+    const x = DE.get(key) || { from:a, to:b, type:e.type, label:e.label, n:0, cycle:false };
+    x.n += e.n; x.cycle = x.cycle || e.cycle; DE.set(key, x);
+  }
+  for (const d of D.values()) if (d.kind === 'grp') { d.uncalled = d.members.filter((m) => m.uncalled).length; d.cycle = d.members.some((m) => G.inCycle.has(m.id)); d.label = d.pre + ` (${d.members.length})`; }
+  // layers: sources and scenarios first; cycles broken by a DFS, then longest path
+  const out = new Map([...D.keys()].map((k) => [k, []]));
+  for (const e of DE.values()) out.get(e.from).push(e);
+  const isRoot = (d) => d.kind === 'src' || d.kind === 'scen';
+  const order0 = [...D.values()].sort((a, b) => (isRoot(b) - isRoot(a)) || String(a.id).localeCompare(String(b.id)));
+  const state = new Map(); const back = new Set();
+  const dfs = (v) => { state.set(v, 1); for (const e of out.get(v)) { const w = e.to; if (state.get(w) === 1) back.add(e); else if (!state.has(w)) dfs(w); } state.set(v, 2); };
+  for (const d of order0) if (!state.has(d.id)) dfs(d.id);
+  const L = new Map(); const indeg = new Map([...D.keys()].map((k) => [k, 0]));
+  for (const e of DE.values()) if (!back.has(e)) indeg.set(e.to, indeg.get(e.to) + 1);
+  const q = [...D.keys()].filter((k) => !indeg.get(k));
+  for (const k of q) L.set(k, isRoot(D.get(k)) ? 0 : 1);
+  while (q.length) { const v = q.shift(); for (const e of out.get(v)) { if (back.has(e)) continue; L.set(e.to, Math.max(L.get(e.to) || 1, L.get(v) + 1)); indeg.set(e.to, indeg.get(e.to) - 1); if (!indeg.get(e.to)) q.push(e.to); } }
+  const nL = Math.max(0, ...L.values()) + 1;
+  const cols = Array.from({ length: nL }, () => []);
+  for (const d of order0) cols[L.get(d.id) || 0].push(d.id);
+  const rank = (id) => ({ 'c:': 0, 's:': 1 }[id.slice(0, 2)] ?? 2);
+  cols[0].sort((a, b) => rank(a) - rank(b) || a.localeCompare(b));
+  const posIn = () => { const m = new Map(); cols.forEach((c) => c.forEach((id, i) => m.set(id, i))); return m; };
+  const preds = new Map([...D.keys()].map((k) => [k, []])); for (const e of DE.values()) if (!back.has(e)) preds.get(e.to).push(e.from);
+  for (let it = 0; it < 4; it++) {
+    for (let l = 1; l < nL; l++) { const pi = posIn(); const bc = (id) => { const p = preds.get(id); return p.length ? p.reduce((a, x) => a + pi.get(x), 0) / p.length : pi.get(id); }; const k = new Map(cols[l].map((id) => [id, bc(id)])); cols[l].sort((a, b) => k.get(a) - k.get(b)); }
+    for (let l = nL - 2; l >= 1; l--) { const pi = posIn(); const bc = (id) => { const sx = out.get(id).filter((e) => !back.has(e)).map((e) => pi.get(e.to)); return sx.length ? sx.reduce((a, x) => a + x, 0) / sx.length : pi.get(id); }; const k = new Map(cols[l].map((id) => [id, bc(id)])); cols[l].sort((a, b) => k.get(a) - k.get(b)); }
+  }
+  const maxN = Math.max(...cols.map((c) => c.length));
+  const P2 = new Map();
+  cols.forEach((c, l) => { const off = (maxN - c.length) * (NH + VG) / 2; c.forEach((id, i) => P2.set(id, [PAD + l * (NW + GAP), PAD + 10 + off + i * (NH + VG)])); });
+  const W = PAD * 2 + nL * NW + (nL - 1) * GAP + 40, H = PAD * 2 + 10 + maxN * (NH + VG) + 40;
+  const svg = s('svg', { viewBox:`0 0 ${W} ${H}`, role:'img', style:`width:100%;min-width:${Math.round(W * 0.72)}px;max-width:${W}px;height:auto` });
+  const mk = (id, fill) => s('marker', { id, viewBox:'0 0 10 10', refX:'9', refY:'5', markerWidth:'7', markerHeight:'7', orient:'auto' }, s('path', { d:'M0,0 L10,5 L0,10 z', style:'fill:' + fill }));
+  svg.appendChild(s('defs', {}, mk('gar', '#888'), mk('garR', '#c62828'), mk('garA', 'var(--acc)'), mk('garB', '#3a7bd5')));
+  const ovReach = OV ? new Set([...OV.reach].map((x) => GR.disp.get(x) || x)) : null;
+  const ovNums = new Map(); if (OV) for (const [k, v] of OV.nums) { const d = GR.disp.get(k); ovNums.set(d, (ovNums.get(d) || []).concat(v)); }
+  // edges first
+  for (const e of DE.values()) {
+    const [ax, ay] = P2.get(e.from), [bx, by] = P2.get(e.to);
+    const lit = OV && ovReach.has(e.from) && ovReach.has(e.to);
+    const col = e.cycle ? '#c62828' : lit ? 'var(--acc)' : e.type === 'sched' ? '#3a7bd5' : '#888';
+    let d, mx, my;
+    if (e.from === e.to) { d = `M${ax + NW},${ay + 10} C${ax + NW + 44},${ay - 20} ${ax + NW + 44},${ay + NH + 20} ${ax + NW},${ay + NH - 10}`; mx = ax + NW + 34; my = ay - 2; }
+    else if (bx > ax) { const sx = ax + NW, sy = ay + NH / 2, tx = bx, ty = by + NH / 2, c = Math.max(40, (tx - sx) / 2); d = `M${sx},${sy} C${sx + c},${sy} ${tx - c},${ty} ${tx},${ty}`; mx = (sx + tx) / 2; my = (sy + ty) / 2; }
+    else { const sx = ax + NW, sy = ay + NH / 2, tx = bx, ty = by + NH / 2, low2 = Math.max(ay, by) + NH + 30; d = `M${sx},${sy} C${sx + 70},${low2} ${tx - 70},${low2} ${tx},${ty}`; mx = (sx + tx) / 2; my = low2 - 6; }
+    const p = s('path', { d, fill:'none', 'stroke-width': e.cycle || lit ? 2.2 : 1.3, 'stroke-dasharray': e.type === 'sched' ? '6 4' : (e.type === 'src' ? '2 3' : null),
+      'marker-end': `url(#${e.cycle ? 'garR' : lit ? 'garA' : e.type === 'sched' ? 'garB' : 'gar'})`, opacity: OV && !lit ? 0.22 : 0.9, style:'stroke:' + col });
+    p.appendChild(s('title', {}, `${e.from.slice(2)} → ${e.to.slice(2)}${e.label ? ' (' + e.label + ')' : ''}${e.n > 1 ? ' ×' + e.n : ''}`));
+    svg.appendChild(p);
+    const tag = [e.label, e.n > 1 ? '×' + e.n : null].filter(Boolean).join(' ');
+    if (tag) svg.appendChild(s('text', { x: mx, y: my - 3, 'text-anchor':'middle', 'font-size':'10', opacity: OV && !lit ? 0.3 : 1, style:'fill:' + (e.type === 'sched' ? '#3a7bd5' : 'var(--sub)') + ';paint-order:stroke;stroke:var(--card);stroke-width:3px' }, tag));
+  }
+  // nodes
+  const KC = { function:'#4a6fa5', blocks:'#d9772b', steps:'#2f8f8f' };
+  const SC = { tick:['#9a3c6a', 'n_tick', '#minecraft:tick'], load:['#6a6a2f', 'n_load', '#minecraft:load'], btn:['#777', 'n_button', ''], rep:['#7b55c7', 'n_repeat', ''] };
+  for (const d of D.values()) {
+    const [x, y] = P2.get(d.id);
+    let color, label, sub, click = null, dash = null, stroke = 'var(--line)', fill = 'var(--card)', sw = 1.2, mark = '';
+    if (d.kind === 'module') {
+      const k = kindOf(d.m); color = KC[k]; if (k === 'blocks' && (d.m.blocks || []).some((b, i) => btype(b, i) === 'repeat')) color = '#7b55c7';
+      label = mlabel(d.m); sub = d.mid + (d.m.tick ? ' · tick' : '') + (d.m.load ? ' · load' : '');
+      click = () => { TAB = 'edit'; select('module', d.mid); };
+      if (d.uncalled) { stroke = '#d08a00'; dash = '5 3'; sw = 2; sub = t('uncalled') + ' · ' + d.mid; }
+    } else if (d.kind === 'grp') {
+      color = '#4a6fa5'; label = d.label; sub = t('n_grp', d.members.length) + (d.uncalled ? ` · ${t('uncalled')} ${d.uncalled}` : '');
+      click = () => { MAPEXP.add(d.pre); renderMap(); }; fill = 'rgba(74,111,165,.10)'; mark = '▸ ';
+      if (d.uncalled) { stroke = '#d08a00'; dash = '5 3'; }
+    } else if (d.kind === 'src') { const c = SC[d.src]; color = c[0]; label = t(c[1]); sub = c[2]; }
+    else if (d.kind === 'scen') { color = '#555'; label = t('n_scen') + ': ' + (d.sc.label || d.sc.id); sub = d.sc.id; click = () => { MAPOV = MAPOV === d.sc.id ? '' : d.sc.id; setUrl(); renderMap(); }; }
+    else { color = '#c62828'; label = t('n_missing'); sub = (P.namespace || 'game') + ':' + d.mid; stroke = '#c62828'; fill = 'rgba(198,40,40,.12)'; sw = 2; }
+    if (G.inCycle.has(d.id) || (d.kind === 'grp' && d.cycle)) { stroke = '#c62828'; sw = 2.4; dash = null; mark = '↻ ' + mark; }
+    const g = s('g', { class: click ? 'nd' : '', opacity: OV && !ovReach.has(d.id) ? 0.3 : 1 });
+    g.appendChild(s('rect', { class:'ndbox', x, y, width: NW, height: NH, rx: 7, 'stroke-width': sw, 'stroke-dasharray': dash, style:`fill:${fill};stroke:${stroke}` }));
+    g.appendChild(s('rect', { x, y, width: 7, height: NH, rx: 3, fill: color }));
+    g.appendChild(svgText(x + 13, y + 16, clip(mark + label, 12, NW - 22), { 'font-size':'12', 'font-weight':'600', style: d.kind === 'missing' ? 'fill:#c62828' : 'fill:var(--ink)' }));
+    g.appendChild(svgText(x + 13, y + 31, clip(sub, 10, NW - 30), { 'font-size':'10', style:'fill:var(--sub);font-family:ui-monospace,Consolas,monospace' }));
+    const nums = ovNums.get(d.id);
+    if (nums) { const tx = nums.join(','); const w = Math.max(18, textW(tx, 11) + 10); g.appendChild(s('rect', { x: x + NW - w + 6, y: y - 8, width: w, height: 18, rx: 9, style:'fill:var(--acc)' })); g.appendChild(s('text', { x: x + NW - w / 2 + 6, y: y + 5, 'text-anchor':'middle', 'font-size':'11', 'font-weight':'bold', fill:'#fff' }, tx)); }
+    if (d.kind === 'module' && GR.on && d.mid.includes('/')) {
+      const pre = d.mid.slice(0, d.mid.lastIndexOf('/') + 1);
+      if (MAPEXP.has(pre)) { const c2 = s('text', { x: x + NW - 6, y: y + 31, 'text-anchor':'end', 'font-size':'11', style:'fill:var(--acc);cursor:pointer' }, '▾', s('title', {}, pre + ' — ' + t('n_grp_open')));
+        c2.addEventListener('click', (ev) => { ev.stopPropagation(); for (const p of [...MAPEXP]) if (p.startsWith(pre)) MAPEXP.delete(p); renderMap(); }); g.appendChild(c2); }
+    }
+    g.appendChild(s('title', {}, `${label}\n${sub}`));
+    if (click) g.addEventListener('click', click);
+    svg.appendChild(g);
+  }
+  return svg;
+}
+
+// ---------------- command console (type one command / player action and run it now) ----------------
+let CON_MODE = 'cmd';                       // 'cmd' | 'act'
+let CON_ACT = { player:'', do:'chat', text:'' };
+const CON_HIST = [];                        // {label, req, res, err, at}
+let CON_CMDS = [];                          // typed commands for the up/down arrows
+let CON_POS = -1;
+try { CON_CMDS = JSON.parse(localStorage.getItem('cmdlab_con_cmds') || '[]').slice(-100); } catch (e) { CON_CMDS = []; }
+function renderConsole() {
+  $('conModeCmd').classList.toggle('on', CON_MODE === 'cmd'); $('conModeAct').classList.toggle('on', CON_MODE === 'act');
+  $('conCmdBox').style.display = CON_MODE === 'cmd' ? '' : 'none'; $('conActBox').style.display = CON_MODE === 'act' ? '' : 'none';
+  const cur = $('conAs').value;
+  $('conAs').innerHTML = '';
+  $('conAs').appendChild(h('option', { value:'' }, t('con_as_server')));
+  for (const p of players()) $('conAs').appendChild(h('option', { value:p, selected: p === cur }, t('con_as', p)));
+  // player action fields
+  const box = $('conActBox'); box.innerHTML = '';
+  if (!players().includes(CON_ACT.player)) CON_ACT.player = players()[0] || '';
+  box.appendChild(h('select', { style:'width:auto', title: t('l_player'), onchange:(e) => { CON_ACT.player = e.target.value; } }, players().map((p) => h('option', { value:p, selected: p === CON_ACT.player }, p))));
+  box.appendChild(h('select', { style:'width:auto', title: t('l_action'), onchange:(e) => { const keep = { player: CON_ACT.player, do: e.target.value }; for (const p of ACTIONS[e.target.value]) if (CON_ACT[p] !== undefined) keep[p] = CON_ACT[p]; CON_ACT = keep; renderConsole(); } },
+    Object.keys(ACTIONS).map((a) => h('option', { value:a, selected: CON_ACT.do === a }, t('act_' + a)))));
+  for (const p of ACTIONS[CON_ACT.do] || []) {
+    let inp;
+    if (BOOLP.has(p)) inp = h('input', { type:'checkbox', checked: p === 'on' ? CON_ACT.on !== false : !!CON_ACT[p], onchange:(e) => { CON_ACT[p] = p === 'on' ? (e.target.checked ? undefined : false) : (e.target.checked || undefined); } });
+    else if (p === 'dir') inp = h('select', { style:'width:auto', onchange:(e) => { CON_ACT.dir = e.target.value; } }, ['forward', 'back', 'left', 'right'].map((d) => h('option', { value:d, selected: (CON_ACT.dir || 'forward') === d }, t('d_' + d))));
+    else if (PLAYERP.has(p)) inp = h('select', { style:'width:auto', onchange:(e) => { CON_ACT[p] = e.target.value || undefined; } }, h('option', { value:'' }, '-'), players().map((x) => h('option', { value:x, selected: CON_ACT[p] === x }, x)));
+    else inp = h('input', { class: p === 'text' ? 'mono wide' : '', type: NUMP.has(p) ? 'number' : 'text', step: NUMP.has(p) ? 'any' : null, value: CON_ACT[p] ?? '',
+      oninput:(e) => { CON_ACT[p] = NUMP.has(p) ? num(e.target.value) : (e.target.value || undefined); }, onkeydown:(e) => { if (e.key === 'Enter') conRun(); } });
+    box.appendChild(h('label', { class:'fld' }, t('p_' + p), inp));
+  }
+  renderConsoleOut();
+}
+function conView(res) {
+  LAST = [res]; LOADERR = [];
+  TAB = 'res'; $('scrStep').value = 1; renderAll();
+  openStep(0);
+}
+function conEntry(e, big) {
+  const en = LANG() === 'en';
+  if (e.pending) return h('div', { class:'conres' }, h('span', { class:'pill' }, t('con_running')), h('code', { class:'cmd' }, e.label));
+  if (e.err) return h('div', { class:'conres' }, h('span', { class:'ng' }, t('ng')), h('code', { class:'cmd' }, e.label), h('span', { class:'ng' }, e.err));
+  const r = e.res || {};
+  const where = en ? r.where_en : r.where_ja;
+  return h('div', { class:'conres' },
+    h('span', { class: r.ok ? 'ok' : 'ng' }, r.ok ? '✓ ' + t('ok') : '✗ ' + t('ng')),
+    h('code', { class:'cmd' }, e.label),
+    (r.output || r.why) ? h('span', {}, h('span', { class:'status' }, t('con_reply') + ': '), (r.why ? r.why + ' ' : '') + (r.output || '')) : null,
+    where ? h('span', { class:'where' }, where) : null,
+    (r.seen || []).length ? h('span', {}, h('span', { class:'status' }, t('con_seen') + ': '), r.seen.slice(0, big ? 6 : 2).join(' / ')) : null,
+    (r.screens || []).length ? h('button', { class:'mini', onclick:(ev) => { ev.stopPropagation(); conView(r); } }, t('con_view')) : null);
+}
+function renderConsoleOut() {
+  const out = $('conOut'); out.innerHTML = '';
+  const last = CON_HIST[CON_HIST.length - 1];
+  out.appendChild(last ? conEntry(last, true) : h('div', { class:'status' }, t('con_help')));
+  $('conHistN').textContent = CON_HIST.length;
+  const ol = $('conHist'); ol.innerHTML = '';
+  if (!CON_HIST.length) ol.appendChild(h('li', { class:'status' }, t('con_hist_empty')));
+  CON_HIST.slice().reverse().forEach((e) => ol.appendChild(h('li', { title: t('con_recall'), onclick:() => {
+    if (e.req.step) { CON_MODE = 'act'; CON_ACT = Object.assign({}, e.req.step); } else { CON_MODE = 'cmd'; $('conInput').value = e.req.command; if (e.req.as) $('conAs').value = e.req.as; }
+    renderConsole();
+  } }, h('span', { class:'status' }, e.at + ' '), conEntry(e, false))));
+}
+function conRequest() {
+  if (CON_MODE === 'cmd') {
+    const c = $('conInput').value.trim().replace(/^\//, '');
+    if (!c) return null;
+    const req = { command: c }; if ($('conAs').value) req.as = $('conAs').value;
+    return { req, label: '/' + c + (req.as ? ` (${t('con_as', req.as)})` : '') };
+  }
+  if (!CON_ACT.player) return null;
+  const st = {}; for (const [k, v] of Object.entries(CON_ACT)) if (v !== undefined && v !== '') st[k] = v;
+  return { req: { step: st }, label: summary(st) };
+}
+async function conRun() {
+  const q = conRequest();
+  if (!q) { status(t('con_empty'), 'ng'); return; }
+  if (q.req.command) { CON_CMDS = CON_CMDS.filter((x) => x !== q.req.command).concat(q.req.command).slice(-100); CON_POS = -1; try { localStorage.setItem('cmdlab_con_cmds', JSON.stringify(CON_CMDS)); } catch (e) { /* */ } }
+  const d = new Date();
+  const e = { label: q.label, req: q.req, pending: true, at: `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}` };
+  CON_HIST.push(e); renderConsoleOut();
+  $('conRun').disabled = true;
+  try {
+    const r = await fetch('/api/console', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(q.req) });
+    if (r.status === 404) throw new Error(t('con_noapi'));
+    const j = await r.json();
+    if (!r.ok) { const m = String(j.error || r.statusText); throw new Error(/ConnectionRefused|10061|not running|no server/i.test(m) ? t('con_noserver') : m); }
+    e.res = j.result || { ok:false, why: t('ng') };
+  } catch (er) { e.err = er.message; }
+  finally { e.pending = false; $('conRun').disabled = false; renderConsoleOut(); refreshStatus(); }
+  if (CON_MODE === 'cmd' && e.res && e.res.ok) $('conInput').select();
+}
+function conAdd() {
+  const q = conRequest();
+  if (!q) { status(t('con_empty'), 'ng'); return; }
+  if (!SEL) { status(t('con_add_sel'), 'ng'); return; }
+  const step = q.req.step ? Object.assign({}, q.req.step) : Object.assign({ run: q.req.command }, q.req.as ? { as: q.req.as } : {});
+  if (SEL.type === 'scenario') {
+    const sc = scById(SEL.id); sc.steps = sc.steps || []; sc.steps.push(step);
+    status(t('con_added_sc', sc.label || sc.id), 'ok');
+  } else {
+    const m = modById(SEL.id); const k = kindOf(m);
+    if (k === 'function') {
+      if (q.req.step) { status(t('con_act_fn'), 'ng'); return; }
+      const cmd = q.req.as ? `execute as ${q.req.as} at @s run ${q.req.command}` : q.req.command;
+      m.lines = (m.lines || []).filter((l, i, a) => !(i === a.length - 1 && !l.trim())); m.lines.push(cmd);
+      status(t('con_added_fn', mlabel(m)), 'ok');
+    } else if (k === 'blocks') {
+      if (q.req.step) { status(t('con_act_fn'), 'ng'); return; }
+      m.blocks = m.blocks || []; m.blocks.push({ type: m.blocks.length ? 'chain' : 'impulse', cmd: q.req.as ? `execute as ${q.req.as} at @s run ${q.req.command}` : q.req.command });
+      SELBLOCK = m.blocks.length - 1;
+      status(t('con_added_bl', mlabel(m)), 'ok');
+    } else { m.steps = m.steps || []; m.steps.push(step); status(t('con_added_st', mlabel(m)), 'ok'); }
+  }
+  dirty(); if (TAB === 'res') TAB = 'edit'; renderAll();
+}
+$('conModeCmd').onclick = () => { CON_MODE = 'cmd'; renderConsole(); $('conInput').focus(); };
+$('conModeAct').onclick = () => { CON_MODE = 'act'; renderConsole(); };
+$('conRun').onclick = conRun;
+$('conAdd').onclick = conAdd;
+$('conInput').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') { e.preventDefault(); conRun(); return; }
+  if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+    if (!CON_CMDS.length) return;
+    e.preventDefault();
+    if (e.key === 'ArrowUp') CON_POS = CON_POS < 0 ? CON_CMDS.length - 1 : Math.max(0, CON_POS - 1);
+    else CON_POS = CON_POS < 0 ? -1 : CON_POS + 1;
+    if (CON_POS >= CON_CMDS.length) CON_POS = -1;
+    $('conInput').value = CON_POS < 0 ? '' : CON_CMDS[CON_POS];
+  }
+});
+// ---------------- import a data pack ----------------
+$('btnImport').onclick = async (e) => {
+  if (DIRTY && !confirm(t('confirm_open'))) return;
+  const dir = (prompt(t('import_ask'), '') || '').trim().replace(/^"|"$/g, '');
+  if (!dir) return;
+  const base = dir.replace(/[\\/]+$/, '').split(/[\\/]/).pop() || 'imported';
+  const name = ((prompt(t('import_name'), base.toLowerCase().replace(/[^a-z0-9_.-]+/g, '_')) || '').trim() || base).replace(/[\\/:*?"<>|]/g, '_');
+  e.target.disabled = true; status(t('importing'));
+  try {
+    const r = await fetch('/api/project/import_pack', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ pack_dir: dir, name }) });
+    if (r.status === 404) throw new Error(t('con_noapi'));
+    const j = await r.json(); if (!r.ok) throw new Error(j.error || r.statusText);
+    await loadProjects(); await openProject(name);
+    status(t('imported', name, (j.modules || []).length), 'ok');
+  } catch (er) { status(t('err') + er.message, 'ng'); } finally { e.target.disabled = false; }
+};
+
 // ---------------- render all ----------------
 function applyLang() {
   document.documentElement.lang = LANG();
@@ -1309,19 +1888,22 @@ function applyLang() {
 }
 function renderAll() {
   if (!P) return;
-  renderLists();
-  for (const [id, k] of [['tabEdit', 'edit'], ['tabFlow', 'flow'], ['tabRes', 'res']]) $(id).classList.toggle('on', TAB === k);
+  renderLists(); renderConsole();
+  for (const [id, k] of [['tabEdit', 'edit'], ['tabFlow', 'flow'], ['tabMap', 'map'], ['tabRes', 'res']]) $(id).classList.toggle('on', TAB === k);
   $('paneEdit').style.display = TAB === 'edit' ? '' : 'none';
   $('paneFlow').style.display = TAB === 'flow' ? '' : 'none';
+  $('paneMap').style.display = TAB === 'map' ? '' : 'none';
   $('paneRes').style.display = TAB === 'res' ? '' : 'none';
   if (TAB === 'edit') renderEditor();
   if (TAB === 'flow') renderFlow();
+  if (TAB === 'map') renderMap();
   renderResults();
 }
 
 // ---------------- wiring ----------------
 $('tabEdit').onclick = () => { TAB = 'edit'; renderAll(); };
-$('tabFlow').onclick = () => { TAB = 'flow'; renderAll(); };
+$('tabFlow').onclick = () => { TAB = 'flow'; renderAll(); setUrl(); };
+$('tabMap').onclick = () => { TAB = 'map'; renderAll(); setUrl(); };
 $('tabRes').onclick = () => { TAB = 'res'; renderAll(); };
 $('lang').onchange = () => { try { localStorage.setItem('cmdlab_lang', LANG()); } catch (e) { /* */ } applyLang(); setUrl(); };
 $('btnOpen').onclick = async () => { if (DIRTY && !confirm(t('confirm_open'))) return; try { await openProject($('projPick').value); } catch (e) { status(t('err') + e.message, 'ng'); } };
@@ -1366,6 +1948,7 @@ window.addEventListener('beforeunload', (e) => { if (DIRTY) { e.preventDefault()
   const view = q.get('view');
   if (view === 'blocks' && !(SEL && SEL.type === 'module' && kindOf(modById(SEL.id)) === 'blocks')) { const b = mods().find((m) => kindOf(m) === 'blocks'); if (b) SEL = { type:'module', id:b.id }; }
   if (view === 'flow') TAB = 'flow';
+  if (view === 'map') { TAB = 'map'; if (q.get('overlay') && scById(q.get('overlay'))) MAPOV = q.get('overlay'); if (q.get('group')) MAPGROUP = q.get('group') !== '0'; if (q.get('side') === '1') MAPSIDE = true; }
   if (view === 'results') TAB = 'res';
   if (q.get('block')) SELBLOCK = (+q.get('block') || 1) - 1;
   if (q.get('open')) { const sc = SEL && SEL.type === 'scenario' ? scById(SEL.id) : (SEL ? modById(SEL.id) : null); const st = sc && (sc.steps || [])[(+q.get('open') || 1) - 1]; if (st) OPEN.add(st); }
@@ -1373,6 +1956,9 @@ window.addEventListener('beforeunload', (e) => { if (DIRTY) { e.preventDefault()
   if (q.get('result') === '1') { try { LAST = await (await fetch('/api/last')).json(); TAB = 'res'; } catch (e) { /* */ } }
   renderAll(); setUrl();
   refreshStatus(); setInterval(refreshStatus, 4000);
+  if (q.get('conmode') === 'act') { CON_MODE = 'act'; CON_ACT = { player: players()[0] || '', do: q.get('do') || 'attack' }; renderConsole(); }
+  if (q.get('con')) { $('conInput').value = q.get('con'); if (q.get('conrun') === '1') conRun(); }
+  if (q.get('new') === '1') { DIRTY = false; newProject(); }
 })();
 </script>
 </body>
