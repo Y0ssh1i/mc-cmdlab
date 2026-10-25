@@ -1,0 +1,116 @@
+{
+ "version": "1.20.1",
+ "title": "人狼 / Werewolf",
+ "player_names": [
+  "Alice",
+  "Bob",
+  "Carol",
+  "Dave"
+ ],
+ "steps": [
+  {
+   "run": "gamerule sendCommandFeedback true"
+  },
+  {
+   "function": [
+    "scoreboard objectives add pid dummy",
+    "scoreboard objectives add vote trigger",
+    "scoreboard objectives add tally dummy",
+    "scoreboard players set Alice pid 1",
+    "scoreboard players set Bob pid 2",
+    "scoreboard players set Carol pid 3",
+    "scoreboard players set Dave pid 4",
+    "tag Carol add wolf",
+    "tag @a[tag=!wolf] add villager",
+    "tellraw @a[tag=wolf] {\"text\":\"あなたは 人狼 です\",\"color\":\"red\"}",
+    "tellraw @a[tag=villager] {\"text\":\"あなたは 村人 です\",\"color\":\"green\"}"
+   ],
+   "wait": 1,
+   "expect": {
+    "seen_by": "Carol",
+    "seen_contains": "人狼"
+   }
+  },
+  {
+   "run": "say 役の配りを確かめる",
+   "expect": {}
+  },
+  {
+   "function": [
+    "time set 18000",
+    "title @a title {\"text\":\"夜になりました\"}",
+    "effect give @a[tag=villager] blindness 3 0 true"
+   ],
+   "wait": 1,
+   "expect": {
+    "seen_by": "Alice",
+    "seen_contains": "夜"
+   }
+  },
+  {
+   "function": [
+    "time set 1000",
+    "title @a title {\"text\":\"朝です。話し合いの時間\"}",
+    "scoreboard players enable @a vote",
+    "tellraw @a {\"text\":\"投票: /trigger vote set <番号> (1 Alice / 2 Bob / 3 Carol / 4 Dave)\"}"
+   ],
+   "wait": 1
+  },
+  {
+   "player": "Alice",
+   "do": "chat",
+   "text": "Carol があやしい"
+  },
+  {
+   "player": "Bob",
+   "do": "command",
+   "text": "trigger vote set 3"
+  },
+  {
+   "player": "Alice",
+   "do": "command",
+   "text": "trigger vote set 3"
+  },
+  {
+   "player": "Dave",
+   "do": "command",
+   "text": "trigger vote set 3"
+  },
+  {
+   "player": "Carol",
+   "do": "command",
+   "text": "trigger vote set 2",
+   "wait": 1
+  },
+  {
+   "function": [
+    "execute store result score #1 tally if entity @a[scores={vote=1}]",
+    "execute store result score #2 tally if entity @a[scores={vote=2}]",
+    "execute store result score #3 tally if entity @a[scores={vote=3}]",
+    "execute store result score #4 tally if entity @a[scores={vote=4}]",
+    "execute if score #3 tally matches 3.. run tellraw @a {\"text\":\"Carol が処刑されました\"}",
+    "execute if score #3 tally matches 3.. run kill Carol"
+   ],
+   "wait": 1.5,
+   "expect": {
+    "died": "Carol",
+    "seen_by": "Bob",
+    "seen_contains": "処刑"
+   }
+  },
+  {
+   "run": "scoreboard players get #3 tally",
+   "expect": {
+    "output_contains": "has 3"
+   }
+  },
+  {
+   "run": "execute if entity @a[tag=wolf,name=Carol] run title @a title {\"text\":\"村人の勝利\",\"color\":\"green\"}",
+   "wait": 1,
+   "expect": {
+    "seen_by": "Dave",
+    "seen_contains": "村人の勝利"
+   }
+  }
+ ]
+}

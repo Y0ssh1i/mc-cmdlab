@@ -108,7 +108,8 @@ pre.log { background:var(--code); border-radius:8px; padding:8px; max-height:200
   <section>
     <h2><span>5</span>台本(1回きりのコマンド・コマンドブロック・関数・待つ)</h2>
     <textarea id="script"></textarea>
-    <div class="row"><button id="btnRun">流す</button><button class="ghost" id="btnExample">例を入れる</button></div>
+    <div class="row"><button id="btnRun">流す</button><button class="ghost" id="btnExample">例を入れる</button>
+      <select id="exPick" style="max-width:280px"></select><button class="ghost" id="btnExResult">この例の結果を見る</button></div>
   </section>
 
   <section class="wide">
@@ -287,7 +288,14 @@ async function refresh() {
   const q = new URLSearchParams(location.search);
   if (q.get('lang')) $('lang').value = q.get('lang');
   applyLang();
-  if (q.get('result')) { try { render(await (await fetch('/api/last')).json()); } catch (e) {} }
+  if (q.get('result')) {
+    try {
+      const r = q.get('result') === '1' ? await (await fetch('/api/last')).json()
+        : await call('/api/result', { name: q.get('result') });
+      render(r);
+      if (q.get('result') !== '1') $('exPick').value = q.get('result');
+    } catch (e) {}
+  }
   if (q.get('step')) { $('scrStep').value = q.get('step'); }
   if (q.get('tab')) { $('scrTab').checked = true; }
   if (q.get('player')) { drawScreen(); $('scrPlayer').value = q.get('player'); }
@@ -325,8 +333,17 @@ $('btnPack').onclick = (e) => busy(e.target, async () => {
     : (L() === I18N.en ? 'Installed\n' : '入れました\n');
   $('packStatus').textContent = head + j.server;
 });
-$('btnRun').onclick = (e) => busy(e.target, async () => { const j = await call('/api/run', { script: $('script').value }); render(j.results); });
-$('btnExample').onclick = () => { $('script').value = JSON.stringify(EXAMPLE, null, 2); };
+$('btnRun').onclick = (e) => busy(e.target, async () => { const j = await call('/api/run', { script: $('script').value, name: (() => { try { const s = JSON.parse($('script').value); return s.title ? $('exPick').value : ''; } catch (err) { return ''; } })() }); render(j.results); });
+$('btnExample').onclick = async () => {
+  const name = $('exPick').value;
+  if (!name) { $('script').value = JSON.stringify(EXAMPLE, null, 2); return; }
+  const j = await call('/api/example', { name });
+  $('script').value = JSON.stringify(j, null, 2);
+};
+$('btnExResult').onclick = async () => { const r = await call('/api/result', { name: $('exPick').value }); if (r.length) { render(r); $('story').scrollIntoView({ behavior: 'smooth' }); } };
+fetch('/api/examples').then((r) => r.json()).then((list) => {
+  $('exPick').innerHTML = list.map((e) => `<option value="${e.name}">${e.title} (${e.version}・${e.steps}段${e.has_result ? '・結果あり' : ''})</option>`).join('');
+}).catch(() => {});
 let PROV = {};
 function aiBody() {
   return { request: $('req').value, version: $('ver').value, players: +$('count').value, names: $('names').value.trim() || null,

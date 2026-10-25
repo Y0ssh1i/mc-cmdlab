@@ -98,3 +98,9 @@ def test_every_provider_is_listed_with_a_key_source():
     from cmdlab import ai
     assert {"anthropic", "openai", "gemini", "openrouter", "ollama", "openai_compatible"} <= set(ai.PROVIDERS)
     assert ai._players(["Alice", "Bob"]) == "Alice, Bob" and ai._players(2) == "Tester1, Tester2"
+
+
+def test_macro_variable_without_dollar_is_an_error():
+    from cmdlab import lint
+    f = lint.lint_lines(["data modify storage a:b x append from storage a:b $(path)", "$say $(name)"], "1.21.6")
+    assert [(x.line, x.level) for x in f] == [(1, "warn")]

@@ -1,0 +1,121 @@
+{
+ "version": "1.20.1",
+ "title": "PvP チーム戦 / Team PvP",
+ "player_names": [
+  "Alice",
+  "Bob",
+  "Carol",
+  "Dave"
+ ],
+ "steps": [
+  {
+   "run": "gamerule sendCommandFeedback true"
+  },
+  {
+   "function": [
+    "team add red {\"text\":\"赤\"}",
+    "team modify red color red",
+    "team modify red friendlyFire false",
+    "team add blue {\"text\":\"青\"}",
+    "team modify blue color blue",
+    "team modify blue friendlyFire false",
+    "team join red Alice",
+    "team join red Carol",
+    "team join blue Bob",
+    "team join blue Dave",
+    "scoreboard objectives add kills playerKillCount {\"text\":\"キル\",\"color\":\"yellow\"}",
+    "scoreboard objectives add deaths deathCount",
+    "scoreboard objectives setdisplay sidebar kills",
+    "scoreboard objectives setdisplay list deaths",
+    "gamemode survival @a",
+    "difficulty normal",
+    "effect clear @a",
+    "give Alice diamond_sword 1",
+    "give Bob wooden_sword 1"
+   ]
+  },
+  {
+   "run": "tp Alice 0 -60 0 -90 0"
+  },
+  {
+   "run": "tp Bob 2 -60 0 90 0"
+  },
+  {
+   "run": "tp Carol 1 -60 3"
+  },
+  {
+   "run": "tp Dave 1 -60 -3"
+  },
+  {
+   "function": [
+    "execute as @a[scores={deaths=1..}] run tellraw @a [{\"selector\":\"@s\"},{\"text\":\" がやられた\",\"color\":\"gray\"}]",
+    "scoreboard players reset @a[scores={deaths=1..}] deaths"
+   ]
+  },
+  {
+   "blocks": [
+    {
+     "type": "repeat",
+     "cmd": "function cmdlab:step7",
+     "auto": true
+    }
+   ],
+   "origin": [
+    0,
+    -58,
+    12
+   ],
+   "wait": 0.5,
+   "cleanup": false
+  },
+  {
+   "player": "Alice",
+   "do": "select",
+   "slot": 0
+  },
+  {
+   "player": "Alice",
+   "do": "attack",
+   "target": "Carol",
+   "times": 1,
+   "wait": 0.5
+  },
+  {
+   "run": "data get entity Carol Health",
+   "expect": {
+    "output_regex": "20\\.0"
+   }
+  },
+  {
+   "player": "Alice",
+   "do": "attack",
+   "target": "Bob",
+   "times": 10,
+   "wait": 2,
+   "expect": {
+    "died": "Bob",
+    "seen_by": "Dave",
+    "seen_contains": "やられた"
+   }
+  },
+  {
+   "run": "scoreboard players get Alice kills",
+   "expect": {
+    "output_contains": "has 1"
+   }
+  },
+  {
+   "player": "Bob",
+   "do": "respawn",
+   "wait": 1
+  },
+  {
+   "run": "title @a title [{\"text\":\"赤チーム \",\"color\":\"red\"},{\"score\":{\"name\":\"Alice\",\"objective\":\"kills\"}},{\"text\":\" キル\"}]",
+   "wait": 1,
+   "expect": {
+    "seen_by": "Bob",
+    "seen_contains": "キル"
+   }
+  }
+ ]
+}

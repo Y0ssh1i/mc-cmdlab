@@ -60,6 +60,10 @@ def lint_lines(lines: list[str], version: str, file: str = "<script>") -> list[F
                 out.append(Finding("error", file, i, f"{rule['where']}: {rule['why']}"))
         if line.startswith("$"):
             continue  # macro lines are filled in at run time
+        if "$(" in line and table["pack_format"] >= 18:  # macros exist from 1.20.2 (pack format 18)
+            out.append(Finding("warn", file, i, "uses a macro variable $(...) but the line does not start with $, "
+                                                "so $(...) is not replaced: the line runs with the literal text and silently does nothing useful"))
+            continue
         bad = brackets(line)
         if bad:
             out.append(Finding("error", file, i, f"brackets/quotes: {bad}"))

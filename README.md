@@ -71,6 +71,10 @@ claude mcp add mc-cmdlab -- python -m cmdlab mcp
 - `function`: a list of lines run together as a real data pack function (written to a small pack, reloaded once).
   Use it for multi-line logic; `as` runs it as a player, `with` passes macro arguments (1.20.2+).
 - `{"wait": 2}` alone: let time pass so `schedule`, repeat blocks and timers can run.
+- `{"player": "Alice", "do": "attack", "target": "Bob"}`: a test player acts like a person: `chat`, `command` (e.g. `/trigger vote set 2`), `move`, `goto`, `look_at`, `attack` (steps closer when knocked back, stops when the target dies), `jump`, `sneak`, `select`, `use`, `respawn`.
+- Extra checks: `died` and `hurt` (a player was killed / hurt in that step).
+
+Examples that pass on a real 1.20.1 server: `examples/tag_run_for_money.json` (逃走中), `examples/werewolf.json` (人狼), `examples/pvp_teams.json` (team PvP), `examples/complex_commands.json`.
 - `blocks`: a command block line placed east of `origin`, facing east. `type` is `impulse`, `chain` or `repeat`.
   `conditional` and `auto` (always active) are supported; an impulse block without `auto` is powered once.
   Each block's `SuccessCount` and `LastOutput` are read back after `wait` seconds.

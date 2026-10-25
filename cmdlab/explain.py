@@ -324,3 +324,33 @@ def function_errors(log_lines: list[str]) -> list[str]:
         if FUNC_ERR.search(line) or ("ERROR" in line and "function" in line.lower()):
             out.append(line.split("]: ", 1)[-1].strip())
     return out[-50:]
+
+
+ACTIONS = {
+    "chat": ("{p} がチャットで「{text}」と言う", "{p} says \"{text}\" in chat"),
+    "command": ("{p} がコマンド /{text} を打つ", "{p} types the command /{text}"),
+    "move": ("{p} が {dir} に {seconds} 秒動く", "{p} moves {dir} for {seconds} s"),
+    "goto": ("{p} が ({x}, {z}) まで歩く", "{p} walks to ({x}, {z})"),
+    "look_at": ("{p} が {target} の方を見る", "{p} looks at {target}"),
+    "attack": ("{p} が {target} を {times} 回たたく", "{p} hits {target} {times} time(s)"),
+    "jump": ("{p} がジャンプする", "{p} jumps"),
+    "sneak": ("{p} がしゃがむ", "{p} sneaks"),
+    "select": ("{p} がホットバーの {slot} 番を持つ", "{p} holds hotbar slot {slot}"),
+    "use": ("{p} が持っている物を使う", "{p} uses the held item"),
+    "respawn": ("{p} がリスポーンする", "{p} respawns"),
+}
+
+
+def describe_action(step: dict, lang: str = "ja") -> str:
+    """Say what a test player does in a {"player": ..., "do": ...} step."""
+    a = dict(step)
+    a.setdefault("seconds", 1)
+    a.setdefault("times", 1)
+    a.setdefault("dir", "forward")
+    a["p"] = step.get("player", "?")
+    a["text"] = str(step.get("text", "")).lstrip("/")
+    ja, en = ACTIONS.get(step["do"], ("{p} が " + step["do"] + " をする", "{p} does " + step["do"]))
+    try:
+        return (ja if lang == "ja" else en).format(**a)
+    except (KeyError, IndexError):
+        return (ja if lang == "ja" else en).split("{")[0]

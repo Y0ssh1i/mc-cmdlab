@@ -76,6 +76,19 @@ class Bots:
             time.sleep(0.1)
         return []
 
+    def act(self, name: str, action: dict, timeout: float = 30) -> dict:
+        """Make one player do something (chat, command, move, goto, look_at, attack, jump, sneak, select, use, respawn)
+        and wait for the result line."""
+        mark = len(self.events)
+        self._send("do " + json.dumps({"name": name, **action}, ensure_ascii=False))
+        t0 = time.time()
+        while time.time() - t0 < timeout:
+            for e in self.events[mark:]:
+                if e.get("event") == "did" and e.get("username") == name:
+                    return e
+            time.sleep(0.1)
+        return {"event": "did", "username": name, "ok": False, "error": "no answer from the player"}
+
     def clear_titles(self) -> None:
         self._send("clear")
 

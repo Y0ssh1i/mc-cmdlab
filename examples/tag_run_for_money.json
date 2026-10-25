@@ -1,0 +1,137 @@
+{
+ "version": "1.20.1",
+ "title": "逃走中 / Run for money",
+ "player_names": [
+  "Alice",
+  "Bob",
+  "Carol",
+  "Dave"
+ ],
+ "steps": [
+  {
+   "run": "gamerule sendCommandFeedback true"
+  },
+  {
+   "function": [
+    "team add hunter {\"text\":\"ハンター\"}",
+    "team modify hunter color dark_gray",
+    "team add runner {\"text\":\"逃走者\"}",
+    "team modify runner color green",
+    "team add jail {\"text\":\"確保\"}",
+    "team modify jail color red",
+    "team join hunter Alice",
+    "team join runner Bob",
+    "team join runner Carol",
+    "team join runner Dave",
+    "scoreboard objectives add money dummy {\"text\":\"賞金\",\"color\":\"gold\"}",
+    "scoreboard objectives add hurt minecraft.custom:minecraft.damage_taken",
+    "scoreboard objectives setdisplay sidebar money",
+    "scoreboard players set @a[team=runner] money 0",
+    "bossbar add game:time {\"text\":\"残り時間\"}",
+    "bossbar set game:time max 60",
+    "bossbar set game:time value 60",
+    "bossbar set game:time players @a",
+    "gamemode adventure @a",
+    "difficulty easy"
+   ]
+  },
+  {
+   "run": "tp Alice 0 -60 0"
+  },
+  {
+   "run": "tp Bob 2 -60 0"
+  },
+  {
+   "run": "tp Carol 20 -60 0"
+  },
+  {
+   "run": "tp Dave 25 -60 6"
+  },
+  {
+   "function": [
+    "# 確保: ハンターにたたかれた逃走者を牢屋のチームへ",
+    "execute as @a[team=runner,scores={hurt=1..}] run tellraw @a [{\"selector\":\"@s\",\"color\":\"red\"},{\"text\":\" 確保！\",\"color\":\"red\"}]",
+    "execute as @a[team=runner,scores={hurt=1..}] run title @s title {\"text\":\"確保\",\"color\":\"red\"}",
+    "execute as @a[team=runner,scores={hurt=1..}] run team join jail @s",
+    "scoreboard players reset @a hurt"
+   ]
+  },
+  {
+   "blocks": [
+    {
+     "type": "repeat",
+     "cmd": "scoreboard players add @a[team=runner] money 5",
+     "auto": true
+    },
+    {
+     "type": "chain",
+     "cmd": "function cmdlab:step7",
+     "auto": true
+    }
+   ],
+   "origin": [
+    0,
+    -58,
+    10
+   ],
+   "wait": 1,
+   "cleanup": false
+  },
+  {
+   "run": "title @a title {\"text\":\"逃走中 スタート\",\"color\":\"gold\"}",
+   "wait": 1,
+   "expect": {
+    "seen_by": "Carol",
+    "seen_contains": "スタート"
+   }
+  },
+  {
+   "player": "Alice",
+   "do": "look_at",
+   "target": "Bob"
+  },
+  {
+   "player": "Alice",
+   "do": "attack",
+   "target": "Bob",
+   "times": 1,
+   "wait": 1,
+   "expect": {
+    "hurt": "Bob",
+    "seen_by": "Carol",
+    "seen_contains": "確保"
+   }
+  },
+  {
+   "run": "team list jail",
+   "expect": {
+    "output_contains": "Bob"
+   }
+  },
+  {
+   "player": "Carol",
+   "do": "move",
+   "dir": "forward",
+   "seconds": 1,
+   "sprint": true
+  },
+  {
+   "run": "execute as @a[team=runner] run title @s actionbar [{\"text\":\"賞金 \",\"color\":\"gold\"},{\"score\":{\"name\":\"@s\",\"objective\":\"money\"}},{\"text\":\" 円\"}]",
+   "wait": 0.5,
+   "expect": {
+    "seen_by": "Dave",
+    "seen_contains": "賞金"
+   }
+  },
+  {
+   "run": "scoreboard players get Carol money",
+   "expect": {
+    "output_regex": "has [1-9]\\d+"
+   }
+  },
+  {
+   "run": "bossbar set game:time value 30",
+   "wait": 0.5
+  }
+ ]
+}

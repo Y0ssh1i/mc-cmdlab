@@ -1,16 +1,40 @@
 // Fake players for the local test server (mineflayer), plus what each one would see on screen.
 // usage: node bots.js <host> <port> <version> <names comma separated>
-// stdout: one JSON line per event. stdin: "state" -> prints a screen snapshot for every player; "quit".
+// stdout: one JSON line per event. stdin: "state" -> prints a screen snapshot for every player;
+// "do {json}" -> one player acts (chat, command, move, goto, look_at, attack, jump, sneak, select, use, respawn); "quit".
 const mineflayer = require('mineflayer');
 
 const [host, port, version, namesArg] = process.argv.slice(2);
 const names = (namesArg || 'Tester1,Tester2,Tester3').split(',').map((s) => s.trim()).filter(Boolean);
 const bots = {};
+const deadAt = {}; // username -> time of the last death (so an attacker stops when the target is down)
 const screen = {}; // per player: title, subtitle, actionbar, bossbars, chat
 
 function log(obj) { process.stdout.write(JSON.stringify(obj) + '\n'); }
+// 1.20.3+ sends chat/title text as NBT ({"type":"compound","value":...}); turn it back into plain text.
+function nbtPlain(o) {
+  if (o && typeof o === 'object' && 'type' in o && 'value' in o) {
+    if (o.type === 'compound') { const r = {}; for (const k of Object.keys(o.value)) r[k] = nbtPlain(o.value[k]); return r; }
+    if (o.type === 'list') return (o.value.value || []).map((v) => nbtPlain(o.value.type === 'compound' || o.value.type === 'list' ? { type: o.value.type, value: v } : v));
+    return o.value;
+  }
+  return o;
+}
+function compText(c) {
+  if (c == null) return '';
+  if (typeof c === 'string' || typeof c === 'number') return String(c);
+  if (Array.isArray(c)) return c.map(compText).join('');
+  let s = c.text != null ? String(c.text) : (c[''] != null ? String(c['']) : (c.translate || ''));
+  if (c.score && c.text == null) s += c.score.value != null ? String(c.score.value) : `[${c.score.name}:${c.score.objective}]`;
+  if (c.selector) s += `[${c.selector}]`;
+  if (c.nbt) s += `[${c.nbt}]`;
+  return s + (c.extra ? c.extra.map(compText).join('') : '');
+}
 function txt(x) {
   if (x == null) return '';
+  if (typeof x === 'string' && x.startsWith('{"') && x.includes('"type"')) {
+    try { return compText(nbtPlain(JSON.parse(x))); } catch (e) { /* fall through */ }
+  }
   if (typeof x === 'string') return x;
   if (typeof x.toString === 'function' && x.toString !== Object.prototype.toString) return x.toString();
   try { return JSON.stringify(x); } catch (e) { return String(x); }
@@ -58,12 +82,19 @@ function join(username, attempt) {
     bot.on('title', (text, type) => {
       const t = txt(text);
       if (type === 'actionbar' || type === 'action_bar') { s.actionbar = t; log({ event: 'actionbar', username, msg: t }); return; }
-      if (type === 'subtitle') s.subtitle = t; else s.title = t;
-      log({ event: 'title', username, text: t, type: type || 'title' });
+      // title/subtitle text comes from the raw packet hook above (keeps score parts)
     });
     bot.on('actionBar', (msg) => { s.actionbar = txt(msg); log({ event: 'actionbar', username, msg: s.actionbar }); });
     // Some versions send the action bar as its own packet that mineflayer does not surface as an event.
     bot._client.on('packet', (data, meta) => {
+      // titles: read the packet ourselves so score / selector parts are not lost (1.20 JSON text and 1.20.3+ NBT text)
+      if (meta.name === 'set_title_text' || meta.name === 'set_title_subtitle') {
+        let t = data.text;
+        try { t = compText(nbtPlain(typeof t === 'string' ? JSON.parse(t) : t)); } catch (e) { t = txt(t); }
+        if (meta.name === 'set_title_text') s.title = t; else s.subtitle = t;
+        log({ event: 'title', username, text: t, type: meta.name === 'set_title_text' ? 'title' : 'subtitle' });
+        return;
+      }
       if (!/action_bar/.test(meta.name)) return;
       let t = data.text;
       try { t = new (require('prismarine-chat')(bot.registry))(typeof t === 'string' ? JSON.parse(t) : t).toString(); } catch (e) { t = txt(t); }
@@ -73,6 +104,9 @@ function join(username, attempt) {
     bot.on('bossBarCreated', bb);
     bot.on('bossBarUpdated', bb);
     bot.on('bossBarDeleted', (b) => { delete s.bossbars[b.entityUUID]; });
+    bot.on('death', () => { deadAt[username] = Date.now(); log({ event: 'death', username }); });
+    bot.on('health', () => log({ event: 'health', username, health: bot.health, food: bot.food }));
+    bot.on('entityHurt', (ent) => { if (ent && ent.type === 'player' && ent.username) log({ event: 'hurt', username, who: ent.username }); });
     bot.on('kicked', (reason) => log({ event: 'kicked', username, reason: txt(reason) }));
     bot.on('error', (err) => log({ event: 'error', username, err: String(err) }));
     // retry when a join fails before spawning (the first login right after start is sometimes dropped)
@@ -83,6 +117,76 @@ names.forEach((username, idx) => {
   setTimeout(() => join(username, 1), 1000 + idx * 600); // join one by one; the server rejects rapid logins
 });
 
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+function playerEntity(bot, name) {
+  const p = bot.players[name];
+  return p && p.entity ? p.entity : null;
+}
+// One player does one thing, like a real person would (needed for tag, PvP, werewolf votes ...).
+async function act(a) {
+  const bot = bots[a.name];
+  const done = (ok, extra) => log(Object.assign({ event: 'did', username: a.name, action: a.action, ok }, extra || {}));
+  if (!bot || !bot.entity) return done(false, { error: 'player is not online' });
+  try {
+    const ms = Math.round((a.seconds || 1) * 1000);
+    switch (a.action) {
+      case 'chat': bot.chat(String(a.text || '')); break;            // also "/trigger vote set 2" etc.
+      case 'command': bot.chat('/' + String(a.text || '').replace(/^\//, '')); break;
+      case 'move': {
+        const dir = a.dir || 'forward';
+        if (a.sprint) bot.setControlState('sprint', true);
+        bot.setControlState(dir, true); await sleep(ms); bot.setControlState(dir, false);
+        bot.setControlState('sprint', false); break;
+      }
+      case 'goto': {                                                 // walk straight to x z (no path finding)
+        const t0 = Date.now();
+        while (Date.now() - t0 < ms + 10000) {
+          const dx = a.x - bot.entity.position.x, dz = a.z - bot.entity.position.z;
+          if (Math.hypot(dx, dz) < 1.2) break;
+          await bot.lookAt(bot.entity.position.offset(dx, 0, dz).offset(0, bot.entity.height, 0), true);
+          bot.setControlState('forward', true); bot.setControlState('sprint', !!a.sprint);
+          await sleep(100);
+        }
+        bot.clearControlStates(); break;
+      }
+      case 'look_at': {
+        const e = playerEntity(bot, a.target);
+        if (!e) return done(false, { error: `cannot see ${a.target}` });
+        await bot.lookAt(e.position.offset(0, e.height, 0), true); break;
+      }
+      case 'attack': {                                               // hit another player; step closer when knocked back
+        let hits = 0;
+        const t0 = Date.now();
+        while (hits < (a.times || 1) && Date.now() - t0 < 20000) {
+          if ((deadAt[a.target] || 0) >= t0) break;                  // the target went down: stop like a player would
+          const e = playerEntity(bot, a.target);
+          if (!e) return done(false, { error: `cannot see ${a.target}`, hits });
+          const d = bot.entity.position.distanceTo(e.position);
+          if (d > 3.0) {
+            if (hits === 0 && d > 8 && !a.chase) return done(false, { error: `${a.target} is ${d.toFixed(1)} blocks away (reach is about 3)` });
+            await bot.lookAt(e.position.offset(0, e.height, 0), true);
+            bot.setControlState('forward', true); bot.setControlState('sprint', true);
+            await sleep(150); bot.clearControlStates(); continue;
+          }
+          await bot.lookAt(e.position.offset(0, e.height * 0.8, 0), true);
+          bot.attack(e); hits++; await sleep(650);
+        }
+        bot.clearControlStates();
+        const killed = (deadAt[a.target] || 0) >= t0;
+        if (hits < (a.times || 1) && !killed) return done(false, { error: `only ${hits} hit(s) landed`, hits });
+        break;
+      }
+      case 'jump': bot.setControlState('jump', true); await sleep(400); bot.setControlState('jump', false); break;
+      case 'sneak': bot.setControlState('sneak', a.on !== false); break;
+      case 'select': bot.setQuickBarSlot(Math.max(0, Math.min(8, a.slot || 0))); break;
+      case 'use': bot.activateItem(); await sleep(ms); bot.deactivateItem(); break;
+      case 'respawn': bot.respawn(); break;
+      default: return done(false, { error: `unknown action ${a.action}` });
+    }
+    done(true, bot.entity ? { position: { x: +bot.entity.position.x.toFixed(1), y: +bot.entity.position.y.toFixed(1), z: +bot.entity.position.z.toFixed(1) } } : {});
+  } catch (e) { bot.clearControlStates && bot.clearControlStates(); done(false, { error: String(e && e.message || e) }); }
+}
+
 let buf = '';
 process.stdin.on('data', (d) => {
   buf += String(d);
@@ -91,6 +195,7 @@ process.stdin.on('data', (d) => {
     const line = buf.slice(0, i).trim(); buf = buf.slice(i + 1);
     if (line === 'state') log({ event: 'state', screens: names.map(snapshot) });
     if (line === 'clear') names.forEach((n) => { if (screen[n]) { screen[n].title = ''; screen[n].subtitle = ''; screen[n].actionbar = ''; } });
+    if (line.startsWith('do ')) { try { act(JSON.parse(line.slice(3))); } catch (e) { log({ event: 'did', ok: false, error: 'bad action json' }); } }
     if (line === 'quit') { Object.values(bots).forEach((b) => b.quit()); setTimeout(() => process.exit(0), 500); }
   }
 });

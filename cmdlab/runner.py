@@ -100,6 +100,11 @@ def judge(step: dict, output: str, seen: list[dict]) -> tuple[bool, str]:
         return False, f"output does not contain '{exp['output_contains']}'"
     if "output_regex" in exp and not re.search(exp["output_regex"], output):
         return False, f"output does not match /{exp['output_regex']}/"
+    for key, ev in (("died", "death"), ("hurt", "hurt")):
+        if key in exp:
+            who = exp[key]
+            if not any(e.get("event") == ev and e.get("username") == who for e in seen):
+                return False, f"{who} was not {'killed' if key == 'died' else 'hurt'}"
     if "seen_contains" in exp:
         who = exp.get("seen_by")
         texts = [str(e.get("msg") or e.get("text") or "") for e in seen if not who or e.get("username") == who]
@@ -170,6 +175,30 @@ def run_steps(server, bots, steps: list[dict], version: str) -> list[StepResult]
                                           why, round(time.time() - t0, 2)))
                 if bots:
                     results[-1].screens = bots.screens()
+                continue
+            if step.get("do"):
+                # a test player acts like a person: chat, command (/trigger ...), move, goto, look_at, attack ...
+                who = step.get("player", "")
+                action = {k: v for k, v in step.items() if k not in ("player", "expect", "wait")}
+                action["action"] = action.pop("do")
+                label = f"{who}: {action['action']} " + " ".join(f"{k}={v}" for k, v in action.items() if k != "action")
+                if not bots or who not in bots.online():
+                    results.append(StepResult(i, label, False, "", why=f"player {who} is not online"))
+                    continue
+                if action["action"] in ("chat", "command") and not SAFE.match(str(action.get("text", "")).lstrip("/")):
+                    results.append(StepResult(i, label, False, "", why="blocked: this command is not allowed in tests"))
+                    continue
+                mark = len(bots.events)
+                t0 = time.time()
+                res = bots.act(who, action)
+                time.sleep(float(step.get("wait", 0.5)))
+                seen = bots.seen_since(mark)
+                ok, why = (False, res.get("error", "the action failed")) if not res.get("ok") else judge(step, "", seen)
+                results.append(StepResult(i, label, ok, json.dumps(res.get("position") or {}, ensure_ascii=False) if res.get("ok") else "",
+                                          [str(e.get("msg") or e.get("text") or (f"{e['username']} died" if e.get("event") == "death" else ""))
+                                           for e in seen if e.get("event") in ("chat", "title", "actionbar", "death")][:20],
+                                          why, round(time.time() - t0, 2)))
+                results[-1].screens = bots.screens()
                 continue
             if not step.get("run") and not step.get("blocks"):
                 # just let time pass (scheduled functions, repeat blocks, timers)
@@ -245,6 +274,9 @@ def run_steps(server, bots, steps: list[dict], version: str) -> list[StepResult]
             who = f"{step['as']} として" if step.get("as") else ""
             res.explain_ja = f"{who}関数として {len(body)} 行を実行: " + " → ".join(explain.describe(x.lstrip("$"), "ja") for x in body[:6]) + (" …" if len(body) > 6 else "")
             res.explain_en = (f"As {step['as']}, run" if step.get("as") else "Run") + f" {len(body)} lines as a function: " +                 " -> ".join(explain.describe(x.lstrip("$"), "en") for x in body[:6]) + (" ..." if len(body) > 6 else "")
+        elif step.get("do"):
+            res.explain_ja = explain.describe_action(step, "ja")
+            res.explain_en = explain.describe_action(step, "en")
         elif not step.get("run"):
             res.explain_ja = f"{step.get('wait', 1.0)} 秒待つ(予約した関数・リピートブロック・タイマーが動く時間)"
             res.explain_en = f"Wait {step.get('wait', 1.0)} s (lets scheduled functions, repeat blocks and timers run)"

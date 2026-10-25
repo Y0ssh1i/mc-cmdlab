@@ -18,6 +18,8 @@ from .server import TestServer
 
 STATIC = Path(__file__).resolve().parent / "static"
 WORK_LAST = Path.home() / ".mc-cmdlab" / "last_run.json"
+EXAMPLES = Path(__file__).resolve().parent.parent / "examples"
+RUNS = Path.home() / ".mc-cmdlab" / "runs"  # saved results per example
 STATE: dict = {"server": None, "bots": None, "last": None, "lock": threading.Lock()}
 
 
@@ -30,6 +32,20 @@ def _server(version: str | None = None) -> TestServer:
 
 
 def api(path: str, body: dict) -> dict:
+    if path == "/api/examples":
+        out = []
+        for f in sorted(EXAMPLES.glob("*.json")):
+            d = json.loads(f.read_text(encoding="utf-8"))
+            out.append({"name": f.stem, "title": d.get("title") or f.stem, "version": d.get("version"),
+                        "steps": len(d.get("steps", [])), "has_result": (RUNS / f"{f.stem}.json").exists()})
+        return out
+    if path == "/api/example":
+        name = Path(str(body.get("name", ""))).name
+        return json.loads((EXAMPLES / f"{name}.json").read_text(encoding="utf-8"))
+    if path == "/api/result":
+        name = Path(str(body.get("name", ""))).name
+        f = RUNS / f"{name}.json"
+        return json.loads(f.read_text(encoding="utf-8")) if f.exists() else []
     if path == "/api/last":
         if STATE["last"]:
             return STATE["last"]["results"]
@@ -86,6 +102,9 @@ def api(path: str, body: dict) -> dict:
         res = runner.run_steps(s, STATE["bots"], script["steps"], s.version)
         STATE["last"] = {"script": script, "results": [asdict(x) for x in res]}
         WORK_LAST.write_text(json.dumps(STATE["last"]["results"], ensure_ascii=False), encoding="utf-8")
+        if body.get("name"):  # keep the result of each example so it can be opened again from the page
+            RUNS.mkdir(parents=True, exist_ok=True)
+            (RUNS / f"{Path(str(body['name'])).name}.json").write_text(json.dumps(STATE["last"]["results"], ensure_ascii=False), encoding="utf-8")
         return {"results": STATE["last"]["results"], "table": runner.to_table(res)}
     if path == "/api/ai/providers":
         return {"providers": {k: {"model": v[0], "env": v[1], "base_url": v[2] or ""} for k, v in ai.PROVIDERS.items()},

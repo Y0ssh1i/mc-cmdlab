@@ -80,6 +80,9 @@ def main(argv: list[str] | None = None) -> int:
             res = runner.run_steps(srv, bots, script["steps"], version)
             last = Path.home() / ".mc-cmdlab" / "last_run.json"
             last.write_text(runner.to_json(res), encoding="utf-8")  # the web UI can show it: /?result=1
+            runs = Path.home() / ".mc-cmdlab" / "runs"
+            runs.mkdir(parents=True, exist_ok=True)
+            (runs / f"{Path(a.script).stem}.json").write_text(runner.to_json(res), encoding="utf-8")  # /?result=<name>
             print(runner.to_json(res) if a.json else runner.to_table(res))
             return 0 if all(x.ok for x in res) else 1
         finally:

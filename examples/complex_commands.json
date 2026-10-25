@@ -16,7 +16,7 @@
       "team join blue Carol",
       "scoreboard players set @a alive 1",
       "scoreboard players set @a kills 0"
-    ], "expect": {"output_regex": "Executed 12 commands"}},
+    ], "expect": {"output_regex": "Executed 12 command"}},
     {"run": "execute as @a[team=blue] at @s run scoreboard players add @s kills 2"},
     {"run": "execute store result score #blue alive if entity @a[team=blue,scores={alive=1}]"},
     {"run": "scoreboard players get #blue alive", "expect": {"output_contains": "has 2"}},
