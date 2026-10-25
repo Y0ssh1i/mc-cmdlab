@@ -1,0 +1,37 @@
+{
+  "version": "1.20.1",
+  "player_names": ["Alice", "Bob", "Carol"],
+  "steps": [
+    {"run": "gamerule sendCommandFeedback true"},
+    {"function": [
+      "scoreboard objectives add kills dummy {\"text\":\"Kills\",\"color\":\"gold\"}",
+      "scoreboard objectives add alive dummy",
+      "scoreboard objectives setdisplay sidebar kills",
+      "team add red {\"text\":\"Red\",\"color\":\"red\"}",
+      "team modify red color red",
+      "team add blue {\"text\":\"Blue\",\"color\":\"blue\"}",
+      "team modify blue color blue",
+      "team join red Alice",
+      "team join blue Bob",
+      "team join blue Carol",
+      "scoreboard players set @a alive 1",
+      "scoreboard players set @a kills 0"
+    ], "expect": {"output_regex": "Executed 12 commands"}},
+    {"run": "execute as @a[team=blue] at @s run scoreboard players add @s kills 2"},
+    {"run": "execute store result score #blue alive if entity @a[team=blue,scores={alive=1}]"},
+    {"run": "scoreboard players get #blue alive", "expect": {"output_contains": "has 2"}},
+    {"run": "execute as @a[scores={kills=2..}] at @s run tellraw @s [{\"text\":\"★ \",\"color\":\"yellow\"},{\"selector\":\"@s\"},{\"text\":\" has \"},{\"score\":{\"name\":\"@s\",\"objective\":\"kills\"}},{\"text\":\" kills\"}]",
+     "expect": {"seen_by": "Bob", "seen_contains": "kills"}},
+    {"run": "title @a actionbar [{\"text\":\"Blue alive: \",\"color\":\"aqua\"},{\"score\":{\"name\":\"#blue\",\"objective\":\"alive\"}}]",
+     "expect": {"seen_by": "Carol", "seen_contains": "Blue alive: 2"}},
+    {"function": [
+      "# runs as Alice: give a named sword, then announce it only if she really holds it",
+      "give @s diamond_sword{display:{Name:'{\"text\":\"Excalibur\",\"color\":\"gold\",\"italic\":false}'},Enchantments:[{id:\"minecraft:sharpness\",lvl:5s}]} 1",
+      "execute if data entity @s Inventory[{id:\"minecraft:diamond_sword\"}] run tellraw @a {\"text\":\"Alice got Excalibur\"}"
+    ], "as": "Alice", "expect": {"seen_by": "Bob", "seen_contains": "Excalibur"}},
+    {"run": "schedule function cmdlab:step10 2s"},
+    {"function": ["title @a title {\"text\":\"Round 2\",\"color\":\"green\"}"], "wait": 0.2},
+    {"wait": 2.5, "expect": {}},
+    {"run": "execute if score #blue alive matches 2.. unless entity @a[team=red,scores={alive=0}] run say both teams still in"}
+  ]
+}

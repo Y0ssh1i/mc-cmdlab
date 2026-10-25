@@ -30,7 +30,21 @@ td code { background:var(--code); padding:1px 4px; border-radius:4px; word-break
 .ok { color:var(--ok); font-weight:600; } .ng { color:var(--ng); font-weight:600; }
 pre.log { background:var(--code); border-radius:8px; padding:8px; max-height:200px; overflow:auto; font-size:12px; white-space:pre-wrap; }
 .wide { grid-column: 1 / -1; }
-.story { margin:0 0 12px; padding-left:22px; font-size:14px; } .story li { margin:4px 0; } .story li.ng { color:var(--ng); } .where { color:var(--ng); font-weight:600; }
+.mc { position:relative; height:420px; border-radius:10px; overflow:hidden; margin-top:10px;
+  background: linear-gradient(#7fb2ff 0%, #a9cbff 55%, #6a9b3c 55%, #4e7a2a 100%); font-family: ui-monospace, Consolas, monospace; color:#fff; text-shadow: 2px 2px 0 #3f3f3f; }
+.mc-boss { position:absolute; top:8px; left:50%; transform:translateX(-50%); width:60%; text-align:center; font-size:13px; }
+.mc-boss .bar { height:6px; background:#333; margin:2px 0 8px; } .mc-boss .fill { height:100%; }
+.mc-title { position:absolute; top:34%; width:100%; text-align:center; } #mcTitle { font-size:40px; font-weight:700; } #mcSub { font-size:18px; }
+.mc-side { position:absolute; right:6px; top:50%; transform:translateY(-50%); background:rgba(0,0,0,.35); font-size:13px; min-width:150px; text-shadow:none; }
+.mc-side .h { text-align:center; background:rgba(0,0,0,.25); padding:2px 6px; } .mc-side .r { display:flex; justify-content:space-between; gap:14px; padding:0 6px; } .mc-side .r b { color:#ff5555; font-weight:400; }
+.mc-tab { position:absolute; top:58px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,.55); padding:6px; font-size:13px; display:none; min-width:220px; text-shadow:none; }
+.mc-tab div { background:rgba(255,255,255,.12); margin:2px 0; padding:1px 6px; }
+.mc-chat { position:absolute; left:6px; bottom:64px; width:52%; font-size:13px; } .mc-chat div { background:rgba(0,0,0,.45); padding:1px 4px; text-shadow:none; }
+.mc-action { position:absolute; bottom:64px; width:100%; text-align:center; font-size:14px; }
+.mc-hud { position:absolute; bottom:8px; left:50%; transform:translateX(-50%); width:364px; height:44px; background:rgba(0,0,0,.4); border:2px solid #222; font-size:12px; text-align:center; line-height:40px; text-shadow:none; }
+.c0{color:#000}.c1{color:#00a}.c2{color:#0a0}.c3{color:#0aa}.c4{color:#a00}.c5{color:#a0a}.c6{color:#fa0}.c7{color:#aaa}.c8{color:#555}.c9{color:#55f}.ca{color:#5f5}.cb{color:#5ff}.cc{color:#f55}.cd{color:#f5f}.ce{color:#ff5}.cf{color:#fff}
+
+.story { margin:0 0 12px; padding-left:22px; font-size:14px; } .story li { margin:4px 0; cursor:pointer; } .story li:hover, #results tbody tr:hover { background:rgba(127,127,127,.12); } #results tbody tr { cursor:pointer; } .story li.sel, #results tbody tr.sel { outline:2px solid var(--acc); } .story li.ng { color:var(--ng); } .where { color:var(--ng); font-weight:600; }
 .check { display:flex; gap:8px; align-items:flex-start; color:var(--ink); font-size:13px; } .check input { width:auto; margin-top:4px; }
 </style>
 </head>
@@ -60,8 +74,10 @@ pre.log { background:var(--code); border-radius:8px; padding:8px; max-height:200
 
   <section>
     <h2><span>2</span>テスト用プレイヤー</h2>
-    <label for="count">人数(Tester1, Tester2, … の名前で入ります)</label>
+    <label for="count" data-i="l_count">人数</label>
     <input id="count" type="number" min="1" max="40" value="3">
+    <label for="names" data-i="l_names">名前(空なら Tester1, Tester2 …。カンマか改行で区切る・英数字と _ で3〜16文字)</label>
+    <textarea id="names" style="min-height:60px" placeholder="Alice, Bob, Carol"></textarea>
     <div class="row"><button id="btnPlayers">入れる</button><span id="players" class="status"></span></div>
 
     <h2 style="margin-top:18px"><span>3</span>データパック(任意)</h2>
@@ -75,12 +91,22 @@ pre.log { background:var(--code); border-radius:8px; padding:8px; max-height:200
     <h2><span>4</span>AI にコマンドを作らせる</h2>
     <label for="req">作りたい企画とテストしたいこと</label>
     <textarea id="req" style="min-height:110px" placeholder="例: 赤チームと青チームに分けて、タイトルで開始を知らせ、得点のスコアボードを作る。"></textarea>
+    <div class="row">
+      <div><label for="prov" data-i="l_prov">AI の接続先</label>
+        <select id="prov"><option value="anthropic">Claude (Anthropic)</option><option value="openai">OpenAI</option>
+          <option value="gemini">Google Gemini</option><option value="openrouter">OpenRouter</option>
+          <option value="ollama">Ollama (手元)</option><option value="openai_compatible">OpenAI 互換 (URL 指定)</option></select></div>
+      <div><label for="model" data-i="l_model">モデル</label><input id="model" placeholder=""></div>
+    </div>
+    <label for="apikey" data-i="l_key">API キー(空なら手元の環境変数。ここに入れた鍵は保存しません)</label>
+    <input id="apikey" type="password" autocomplete="off" placeholder="">
+    <div id="baseRow" style="display:none"><label for="baseurl">Base URL</label><input id="baseurl" placeholder="https://.../v1"></div>
     <div class="row"><button id="btnGen">作る</button><button class="ghost" id="btnFix">失敗を直させる</button></div>
-    <div class="status">Claude を使います(手元の ANTHROPIC_API_KEY)。作った台本は右の欄に入ります。</div>
+    <div class="status" id="aiNote">作った台本は右の欄に入ります。</div>
   </section>
 
   <section>
-    <h2><span>5</span>台本(1回きりのコマンド・コマンドブロック)</h2>
+    <h2><span>5</span>台本(1回きりのコマンド・コマンドブロック・関数・待つ)</h2>
     <textarea id="script"></textarea>
     <div class="row"><button id="btnRun">流す</button><button class="ghost" id="btnExample">例を入れる</button></div>
   </section>
@@ -90,8 +116,27 @@ pre.log { background:var(--code); border-radius:8px; padding:8px; max-height:200
     <div id="summary" class="status"></div>
     <h2 style="margin-top:12px" data-i="h_story">順番に何が起きたか</h2>
     <ol id="story" class="story"></ol>
+    <div id="screenSlot"></div>
     <table id="results"><thead><tr><th>#</th><th data-i="c_res">結果</th><th data-i="c_what">していること</th><th data-i="c_cmd">コマンド</th><th data-i="c_reply">サーバーの返事・エラーの場所</th><th data-i="c_seen">プレイヤーが見たもの</th></tr></thead><tbody></tbody></table>
-    <h2 style="margin-top:16px">サーバーのログ</h2>
+    <div id="screenWrap">
+    <h2 style="margin-top:16px" data-i="h_screen">マイクラの画面での見え方</h2>
+    <div class="row">
+      <label class="check" style="margin:0"><span data-i="l_player">プレイヤー</span> <select id="scrPlayer" style="width:auto"></select></label>
+      <label class="check" style="margin:0"><span data-i="l_step">段</span> <input id="scrStep" type="range" min="1" max="1" value="1" style="width:220px"> <b id="scrStepN">1</b></label>
+      <label class="check" style="margin:0"><input type="checkbox" id="scrTab"> <span data-i="l_tab">Tab を押した状態</span></label>
+    </div>
+    <div class="mc" id="mc">
+      <div class="mc-boss" id="mcBoss"></div>
+      <div class="mc-title"><div id="mcTitle"></div><div id="mcSub"></div></div>
+      <div class="mc-side" id="mcSide"></div>
+      <div class="mc-tab" id="mcTab"></div>
+      <div class="mc-chat" id="mcChat"></div>
+      <div class="mc-action" id="mcAct"></div>
+      <div class="mc-hud" id="mcHud"></div>
+    </div>
+    <div class="status" id="mcNote"></div>
+    </div>
+    <h2 style="margin-top:16px" data-i="h_log">サーバーのログ</h2>
     <pre class="log" id="log"></pre>
   </section>
 </main>
@@ -125,15 +170,72 @@ const EXAMPLE = {
 const I18N = {
   ja: { lang:'言語', tagline:'マイクラ(Java 版)のコマンドを、人を集めずに、コマンドブロックを置かずに試す環境。手元だけで動きます。',
         h_result:'結果', h_story:'順番に何が起きたか', c_res:'結果', c_what:'していること', c_cmd:'コマンド', c_reply:'サーバーの返事・エラーの場所', c_seen:'プレイヤーが見たもの',
-        ok:'OK', ng:'失敗', passed:(a,b)=>`${a} / ${b} 段が成功`, saw:'見えたもの' },
+        ok:'OK', ng:'失敗', passed:(a,b)=>`${a} / ${b} 段が成功`, saw:'見えたもの', h_screen:'マイクラの画面での見え方', l_player:'プレイヤー', l_step:'段', l_tab:'Tab を押した状態', h_log:'サーバーのログ', l_count:'人数', l_names:'名前(空なら Tester1, Tester2 …。カンマか改行で区切る・英数字と _ で3〜16文字)', l_prov:'AI の接続先', l_model:'モデル', l_key:'API キー(空なら手元の環境変数。ここに入れた鍵は保存しません)' },
   en: { lang:'Language', tagline:'Test Minecraft (Java) commands without gathering people or placing command blocks. Runs only on your PC.',
         h_result:'Results', h_story:'What happened, step by step', c_res:'Result', c_what:'What it does', c_cmd:'Command', c_reply:'Server reply / error location', c_seen:'What players saw',
-        ok:'OK', ng:'Failed', passed:(a,b)=>`${a} / ${b} steps passed`, saw:'seen' } };
+        ok:'OK', ng:'Failed', passed:(a,b)=>`${a} / ${b} steps passed`, saw:'seen', h_screen:'How it looks in Minecraft', l_player:'Player', l_step:'Step', l_tab:'Holding Tab', h_log:'Server log', l_count:'Number of players', l_names:'Names (empty = Tester1, Tester2 ...; comma or newline; 3-16 letters, digits, _)', l_prov:'AI provider', l_model:'Model', l_key:'API key (empty = your environment variable; a key typed here is never saved)' } };
 let LAST = [];
 function L() { return I18N[$('lang').value] || I18N.ja; }
 function applyLang() {
   document.querySelectorAll('[data-i]').forEach((el) => { const v = L()[el.dataset.i]; if (typeof v === 'string') el.textContent = v; });
   render(LAST);
+}
+
+const BOSS = { pink:'#ff6fd8', blue:'#4aa3ff', red:'#ff4a4a', green:'#4aff6a', yellow:'#ffe14a', purple:'#b44aff', white:'#fff' };
+function mcText(el, t) {  // render Minecraft section-sign color codes
+  el.innerHTML = '';
+  let cls = 'cf';
+  for (const part of String(t || '').split(/(§[0-9a-fk-or])/i)) {
+    const m = part.match(/^§([0-9a-f])$/i);
+    if (m) { cls = 'c' + m[1].toLowerCase(); continue; }
+    if (/^§[k-or]$/i.test(part) || !part) continue;
+    const sp = document.createElement('span'); sp.className = cls; sp.textContent = part; el.appendChild(sp);
+  }
+}
+function teamOf(scr, name) { return (scr.teams || []).find((t) => (t.members || []).includes(name)); }
+function drawScreen() {
+  const en = $('lang').value === 'en';
+  const note = $('mcNote');
+  if (!LAST.some((r) => r.screens && r.screens.length)) { note.textContent = en ? 'Run a script with players online to see their screens.' : 'プレイヤーを入れて台本を流すと、ここに各プレイヤーの画面が出ます。'; return; }
+  $('scrStep').max = LAST.length;
+  const i = Math.min(+$('scrStep').value, LAST.length);
+  $('scrStepN').textContent = i;
+  const res = LAST[i - 1];
+  const names = (res.screens || []).map((x) => x.name);
+  if ($('scrPlayer').options.length !== names.length) $('scrPlayer').innerHTML = names.map((n) => `<option>${n}</option>`).join('');
+  const scr = (res.screens || []).find((x) => x.name === $('scrPlayer').value) || (res.screens || [])[0];
+  if (!scr) { note.textContent = ''; return; }
+  note.textContent = `${i}. ${en ? res.explain_en : res.explain_ja}` + (scr.online ? '' : (en ? ' — this player is not online' : ' — このプレイヤーは入れていません'));
+  $('mcBoss').innerHTML = '';
+  for (const b of scr.bossbars || []) {
+    const d = document.createElement('div'); const t = document.createElement('div'); mcText(t, b.title); d.appendChild(t);
+    const bar = document.createElement('div'); bar.className = 'bar'; const f = document.createElement('div'); f.className = 'fill';
+    f.style.width = Math.round((b.health || 0) * 100) + '%'; f.style.background = BOSS[b.color] || '#ff6fd8'; bar.appendChild(f); d.appendChild(bar);
+    $('mcBoss').appendChild(d);
+  }
+  mcText($('mcTitle'), scr.title); mcText($('mcSub'), scr.subtitle); mcText($('mcAct'), scr.actionbar);
+  const side = $('mcSide'); side.innerHTML = ''; side.style.display = scr.sidebar ? '' : 'none';
+  if (scr.sidebar) {
+    const h = document.createElement('div'); h.className = 'h'; mcText(h, scr.sidebar.title); side.appendChild(h);
+    for (const it of scr.sidebar.items) { const r = document.createElement('div'); r.className = 'r'; const n = document.createElement('span'); mcText(n, it.name); const v = document.createElement('b'); v.textContent = it.score; r.append(n, v); side.appendChild(r); }
+  }
+  const tab = $('mcTab'); tab.innerHTML = ''; tab.style.display = $('scrTab').checked ? 'block' : 'none';
+  if (scr.tabHeader) { const d = document.createElement('div'); mcText(d, scr.tabHeader); tab.appendChild(d); }
+  for (const pl of scr.tab || []) { const t = teamOf(scr, pl.name); const d = document.createElement('div'); mcText(d, (t ? t.prefix : '') + pl.name + (t ? t.suffix : '')); tab.appendChild(d); }
+  if (scr.tabFooter) { const d = document.createElement('div'); mcText(d, scr.tabFooter); tab.appendChild(d); }
+  const chat = $('mcChat'); chat.innerHTML = '';
+  for (const c of (scr.chat || []).slice(-6)) { const d = document.createElement('div'); mcText(d, c); chat.appendChild(d); }
+  $('mcHud').textContent = scr.online ? `HP ${scr.health ?? '-'}  FOOD ${scr.food ?? '-'}  ${scr.gamemode || ''}${scr.held ? '  HAND ' + scr.held : ''}` : '-';
+}
+['scrStep', 'scrPlayer', 'scrTab'].forEach((id) => { $(id).addEventListener('input', drawScreen); $(id).addEventListener('change', drawScreen); });
+
+function openStep(i) {
+  $('scrStep').value = i;
+  document.querySelectorAll('.story li, #results tbody tr').forEach((el) => el.classList.remove('sel'));
+  const li = $('story').children[i - 1]; if (li) li.classList.add('sel');
+  const tr = $('results').querySelector('tbody').children[i - 1]; if (tr) tr.classList.add('sel');
+  drawScreen();
+  $('screenWrap').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 function render(res) {
   LAST = res || [];
@@ -148,6 +250,8 @@ function render(res) {
     const li = document.createElement('li');
     li.className = r.ok ? '' : 'ng';
     li.textContent = `${what} — ${r.ok ? L().ok : L().ng}` + (r.ok ? '' : `: ${r.why || ''} ${where || ''}`) + ((r.seen || []).length ? ` (${L().saw}: ${r.seen.slice(0, 3).join(' / ')})` : '');
+    li.onclick = () => openStep(r.i);
+    li.title = $('lang').value === 'en' ? 'Click to see this step on screen' : 'クリックでこの段の画面を見る';
     story.appendChild(li);
     const tr = document.createElement('tr');
     tr.innerHTML = '<td></td><td></td><td></td><td><code></code></td><td></td><td></td>';
@@ -158,9 +262,12 @@ function render(res) {
     tr.children[4].textContent = (r.why ? r.why + ' ' : '') + (r.output || '');
     if (where) { const w = document.createElement('div'); w.className = 'where'; w.textContent = where; tr.children[4].appendChild(w); }
     tr.children[5].textContent = (r.seen || []).join(' / ');
+    tr.onclick = () => openStep(r.i);
     tb.appendChild(tr);
   }
   $('summary').textContent = LAST.length ? L().passed(ok, LAST.length) : '';
+  if (LAST.length && +$('scrStep').value <= 1) $('scrStep').value = LAST.length;
+  drawScreen();
 }
 async function refresh() {
   try {
@@ -180,6 +287,14 @@ async function refresh() {
   const q = new URLSearchParams(location.search);
   if (q.get('lang')) $('lang').value = q.get('lang');
   applyLang();
+  if (q.get('result')) { try { render(await (await fetch('/api/last')).json()); } catch (e) {} }
+  if (q.get('step')) { $('scrStep').value = q.get('step'); }
+  if (q.get('tab')) { $('scrTab').checked = true; }
+  if (q.get('player')) { drawScreen(); $('scrPlayer').value = q.get('player'); }
+  $('screenSlot').appendChild($('screenWrap'));
+  if (q.get('click')) { setTimeout(() => openStep(+q.get('click')), 300); }
+  if (q.get('view') === 'screen') { const w = $('screenWrap'); document.querySelector('main').style.display = 'none'; w.style.padding = '0 24px'; document.body.appendChild(w); }
+  if (q.get('step') || q.get('player') || q.get('tab')) { drawScreen(); if (q.get('focus')) document.getElementById('mc').scrollIntoView(); }
   if (q.get('demo')) {  // ?demo=1 shows a sample result (for screenshots and first-time users)
     render([
       { i: 1, ok: true, command: 'scoreboard objectives add points dummy "得点"', output: 'Created new objective [得点]', explain_ja: 'スコアボードの項目「points」を作る', explain_en: 'Create scoreboard objective "points"', seen: [] },
@@ -198,7 +313,7 @@ $('btnSetup').onclick = (e) => busy(e.target, async () => {
 });
 $('btnStart').onclick = (e) => busy(e.target, async () => { await call('/api/start', { version: $('ver').value }); $('srvStatus').textContent = '起動しました'; });
 $('btnStop').onclick = (e) => busy(e.target, async () => { await call('/api/stop'); $('srvStatus').textContent = '止めました'; });
-$('btnPlayers').onclick = (e) => busy(e.target, async () => { const j = await call('/api/players', { count: +$('count').value }); $('players').textContent = '入った: ' + j.spawned.join(', '); });
+$('btnPlayers').onclick = (e) => busy(e.target, async () => { const j = await call('/api/players', { count: +$('count').value, names: $('names').value.trim() || null }); $('players').textContent = '入った: ' + j.spawned.join(', '); });
 $('btnLint').onclick = (e) => busy(e.target, async () => {
   const j = await call('/api/lint', { pack_dir: $('pack').value, version: $('ver').value });
   $('packStatus').textContent = j.findings.length ? j.findings.map((f) => `[${f.level}] ${f.file}:${f.line} ${f.message}`).join('\n') : 'この版で問題は見つかりませんでした';
@@ -212,12 +327,32 @@ $('btnPack').onclick = (e) => busy(e.target, async () => {
 });
 $('btnRun').onclick = (e) => busy(e.target, async () => { const j = await call('/api/run', { script: $('script').value }); render(j.results); });
 $('btnExample').onclick = () => { $('script').value = JSON.stringify(EXAMPLE, null, 2); };
+let PROV = {};
+function aiBody() {
+  return { request: $('req').value, version: $('ver').value, players: +$('count').value, names: $('names').value.trim() || null,
+           provider: $('prov').value, model: $('model').value.trim(), key: $('apikey').value.trim(), base_url: $('baseurl').value.trim() };
+}
+function provChanged() {
+  const p = PROV[$('prov').value] || {};
+  $('model').placeholder = p.model || 'model name';
+  $('apikey').placeholder = p.env ? p.env : (L() === I18N.en ? 'not needed' : '不要');
+  $('baseRow').style.display = $('prov').value === 'openai_compatible' ? '' : 'none';
+  if (p.base_url && !$('baseurl').value) $('baseurl').value = p.base_url;
+  try { localStorage.setItem('cmdlab.prov', $('prov').value); } catch (e) {}
+}
+$('prov').onchange = provChanged;
+fetch('/api/ai/providers').then((r) => r.json()).then((j) => {
+  PROV = j.providers || {};
+  let saved = null; try { saved = localStorage.getItem('cmdlab.prov'); } catch (e) {}
+  $('prov').value = saved || j.default || 'anthropic';
+  provChanged();
+}).catch(() => {});
 $('btnGen').onclick = (e) => busy(e.target, async () => {
-  const j = await call('/api/ai/generate', { request: $('req').value, version: $('ver').value, players: +$('count').value });
+  const j = await call('/api/ai/generate', aiBody());
   $('script').value = JSON.stringify(j.script, null, 2);
 });
 $('btnFix').onclick = (e) => busy(e.target, async () => {
-  const j = await call('/api/ai/fix', { request: $('req').value, players: +$('count').value });
+  const j = await call('/api/ai/fix', aiBody());
   $('script').value = JSON.stringify(j.script, null, 2);
 });
 </script>

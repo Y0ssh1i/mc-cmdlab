@@ -59,10 +59,28 @@ class TestServer:
         return dest
 
     # --- run ---------------------------------------------------------------
-    def start(self, memory: str = "2G", timeout: float = 240) -> None:
+    def reset_world(self) -> None:
+        """Start each test from a clean world, keeping the installed data packs."""
+        world = self.dir / "world"
+        if not world.exists():
+            return
+        packs = world / "datapacks"
+        keep = self.dir / "_datapacks_keep"
+        if keep.exists():
+            shutil.rmtree(keep)
+        if packs.exists():
+            shutil.move(str(packs), str(keep))
+        shutil.rmtree(world)
+        if keep.exists():
+            world.mkdir()
+            shutil.move(str(keep), str(packs))
+
+    def start(self, memory: str = "2G", timeout: float = 240, fresh: bool = True) -> None:
         jar = self.dir / f"server-{self.version}.jar"
         if not jar.exists():
             raise SystemExit(f"run setup for {self.version} first")
+        if fresh:
+            self.reset_world()
         if not self.password:
             for line in (self.dir / "server.properties").read_text(encoding="utf-8").splitlines():
                 if line.startswith("rcon.password="):

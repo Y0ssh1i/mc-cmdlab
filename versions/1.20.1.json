@@ -14,12 +14,36 @@
   },
   "mineflayer_version": "1.20.1",
   "not_available": [
-    {"pattern": "\\b[a-z_:]+\\[[a-z_:]+=", "where": "item arguments", "why": "item components (item[component=...]) start in 1.20.5; 1.20.1 uses NBT: item{...}"},
-    {"pattern": "\\$\\(", "where": "function macros", "why": "function macros ($(var)) start in 1.20.2"},
-    {"pattern": "^\\s*return run ", "where": "return run", "why": "'return run' starts in 1.20.3"},
-    {"pattern": "\\btransfer\\b", "where": "/transfer", "why": "/transfer starts in 1.20.5"},
-    {"pattern": "\\brotate\\b", "where": "/rotate", "why": "/rotate starts in 1.21.2"},
-    {"pattern": "\\btick (freeze|step|sprint|query)", "where": "/tick", "why": "/tick starts in 1.20.3"}
+    {
+      "pattern": "(?:\\bgive\\s+\\S+\\s+|\\bclear\\s+\\S+\\s+|\\bwith\\s+)[a-z_:]+\\[[a-z_:]+=",
+      "where": "item arguments",
+      "why": "item components (item[component=...]) start in 1.20.5; 1.20.1 uses NBT: item{...}"
+    },
+    {
+      "pattern": "\\$\\(",
+      "where": "function macros",
+      "why": "function macros ($(var)) start in 1.20.2"
+    },
+    {
+      "pattern": "^\\s*return run ",
+      "where": "return run",
+      "why": "'return run' starts in 1.20.3"
+    },
+    {
+      "pattern": "\\btransfer\\b",
+      "where": "/transfer",
+      "why": "/transfer starts in 1.20.5"
+    },
+    {
+      "pattern": "\\brotate\\b",
+      "where": "/rotate",
+      "why": "/rotate starts in 1.21.2"
+    },
+    {
+      "pattern": "\\btick (freeze|step|sprint|query)",
+      "where": "/tick",
+      "why": "/tick starts in 1.20.3"
+    }
   ],
   "notes": "Data pack folder names are plural in 1.20.1 (functions/, advancements/ ...). They became singular (function/, advancement/ ...) in 1.21."
 }

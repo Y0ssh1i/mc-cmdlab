@@ -9,7 +9,8 @@ Test Minecraft Java Edition commands on your own PC, without gathering people or
 - Run a script of one-off commands and command block lines (impulse, chain, repeat, conditional, always active or redstone-powered).
 - Each step shows what it does in Japanese or English, whether it passed, what each player saw, and where an error is.
 - Check a data pack against the chosen version before running it (pack format, folder names, syntax that the version does not have).
-- Ask Claude to write the commands for a game idea, run them, and let it fix the steps that failed.
+- Ask an AI to write the commands for a game idea, run them, and let it fix the steps that failed.
+  Claude by default; OpenAI, Google Gemini, OpenRouter, a local Ollama or any OpenAI-compatible endpoint also work.
 - Works in Chrome (a local web page), from the terminal, and as an MCP server for Claude Code / Claude Desktop.
 
 ## Quick start
@@ -20,7 +21,7 @@ Requirements: Python 3.10+, Java (17 for 1.20.1, 21 for 1.21.x), Node.js 18+.
 git clone https://github.com/Y0ssh1i/mc-cmdlab
 cd mc-cmdlab
 npm install            # fake players (mineflayer)
-pip install anthropic  # only if you use the AI features; set ANTHROPIC_API_KEY
+pip install anthropic  # only for Claude; set ANTHROPIC_API_KEY (or OPENAI_API_KEY, GEMINI_API_KEY, OPENROUTER_API_KEY)
 python -m cmdlab ui    # open http://127.0.0.1:8765 in Chrome
 ```
 
@@ -33,7 +34,11 @@ python -m cmdlab setup --version 1.20.1 --accept-eula
 python -m cmdlab lint path/to/datapack --version 1.20.1
 python -m cmdlab run examples/teams_and_scores.json --players 3
 python -m cmdlab ai "Split players into red and blue, show a start title, keep score" --version 1.20.1
+python -m cmdlab ai "..." --provider gemini            # or openai / openrouter / ollama
+python -m cmdlab ai "..." --provider openai_compatible --base-url http://localhost:1234/v1 --model my-model
 ```
+
+In the page you can pick the provider and model, and paste a key for one request (it is never saved).
 
 As an MCP server (Claude Code):
 
@@ -62,7 +67,10 @@ claude mcp add mc-cmdlab -- python -m cmdlab mcp
 }
 ```
 
-- `run`: a one-off command. `as`: run it as that player.
+- `run`: a one-off command. `as`: run it as that player. Long `execute` chains, NBT and JSON text are fine.
+- `function`: a list of lines run together as a real data pack function (written to a small pack, reloaded once).
+  Use it for multi-line logic; `as` runs it as a player, `with` passes macro arguments (1.20.2+).
+- `{"wait": 2}` alone: let time pass so `schedule`, repeat blocks and timers can run.
 - `blocks`: a command block line placed east of `origin`, facing east. `type` is `impulse`, `chain` or `repeat`.
   `conditional` and `auto` (always active) are supported; an impulse block without `auto` is powered once.
   Each block's `SuccessCount` and `LastOutput` are read back after `wait` seconds.
@@ -88,7 +96,8 @@ claude mcp add mc-cmdlab -- python -m cmdlab mcp
 - **台本で流せます。** 1回きりのコマンドも、コマンドブロック(インパルス・チェーン・リピート、条件付き、常時実行かレッドストーン)の連結も、台本にして流せます。
 - **結果の見え方:** 段ごとに、していること(日本語か英語)、成功か失敗か、プレイヤーに見えたもの、エラーの場所を出します。
 - **データパックの点検:** 流す前に、選んだ版に合っているかを点検します(形式の番号、フォルダの名前、その版に無い書き方)。
-- **AI につなげます。** 企画を書くと Claude がコマンドを作り、流して、失敗した段を直させられます。
+- **AI につなげます。** 企画を書くと AI がコマンドを作り、流して、失敗した段を直させられます。Claude のほか、OpenAI・Gemini・OpenRouter・手元の Ollama・OpenAI 互換の API も選べます。画面に入れた鍵は保存しません。
+- **複雑なコマンドも:** 長い execute(as/at/positioned/if/unless/store)、NBT、JSON の文字、複数行の関数(マクロも)、時間を待つ段。括弧の閉じ忘れや JSON の誤りは流す前に知らせます。
 - **使い方は3通り:** Chrome で開く画面、ターミナル、Claude Code や Claude Desktop の MCP のサーバー。
 
 使い方は上の Quick start と同じです。画面は `python -m cmdlab ui` のあと Chrome で http://127.0.0.1:8765 を開きます。

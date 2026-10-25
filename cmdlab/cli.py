@@ -28,13 +28,21 @@ def main(argv: list[str] | None = None) -> int:
     r.add_argument("--players", type=int)
     r.add_argument("--pack", action="append", default=[])
     r.add_argument("--json", action="store_true")
-    g = sub.add_parser("ai", help="ask Claude to write a script for an idea")
+    g = sub.add_parser("ai", help="ask an AI (Claude, OpenAI, Gemini, OpenRouter, Ollama, ...) to write a script")
     g.add_argument("request")
     g.add_argument("--version", default="1.20.1")
     g.add_argument("--players", type=int, default=3)
     g.add_argument("--out", default="ai_script.json")
+    g.add_argument("--provider", default=ai.DEFAULT_PROVIDER, choices=list(ai.PROVIDERS))
+    g.add_argument("--model", default=ai.DEFAULT_MODEL, help="model name (default depends on the provider)")
+    g.add_argument("--base-url", default="", help="for openai_compatible / a custom endpoint")
     sub.add_parser("mcp", help="run as an MCP server over stdio (for Claude Code / Claude Desktop)")
     a = ap.parse_args(argv)
+    for s_ in (sys.stdout, sys.stderr):
+        try:
+            s_.reconfigure(encoding="utf-8")
+        except AttributeError:
+            pass
 
     if a.cmd == "ui":
         from .web import serve
@@ -51,11 +59,11 @@ def main(argv: list[str] | None = None) -> int:
     if a.cmd == "lint":
         t = Path(a.target)
         found = lint.lint_pack(t, a.version) if t.is_dir() else \
-            lint.lint_lines([s.get("run", "") for s in runner.load_script(t)["steps"]], a.version, str(t))
+            lint.lint_lines(runner.script_lines(runner.load_script(t)["steps"]), a.version, str(t))
         print(lint.report(found, a.json))
         return 1 if any(f.level == "error" for f in found) else 0
     if a.cmd == "run":
-        from .bots import Bots
+        from .bots import Bots, parse_names
         from .server import TestServer
         script = runner.load_script(Path(a.script))
         version = a.version or script.get("version", "1.20.1")
@@ -64,11 +72,14 @@ def main(argv: list[str] | None = None) -> int:
         for p in a.pack + script.get("datapacks", []):
             srv.install_pack(Path(p))
         srv.start()
-        bots = Bots(srv.port, versions.notes(version)["mineflayer_version"], players) if players else None
+        names = parse_names(script.get("player_names"), players)
+        bots = Bots(srv.port, versions.notes(version)["mineflayer_version"], names) if names else None
         try:
             if bots:
                 print("players:", ", ".join(bots.wait_spawned()), file=sys.stderr)
             res = runner.run_steps(srv, bots, script["steps"], version)
+            last = Path.home() / ".mc-cmdlab" / "last_run.json"
+            last.write_text(runner.to_json(res), encoding="utf-8")  # the web UI can show it: /?result=1
             print(runner.to_json(res) if a.json else runner.to_table(res))
             return 0 if all(x.ok for x in res) else 1
         finally:
@@ -76,7 +87,7 @@ def main(argv: list[str] | None = None) -> int:
                 bots.stop()
             srv.stop()
     if a.cmd == "ai":
-        steps = ai.generate(a.request, a.version, a.players)
+        steps = ai.generate(a.request, a.version, a.players, provider=a.provider, model=a.model, base_url=a.base_url)
         Path(a.out).write_text(json.dumps({"version": a.version, "players": a.players, "steps": steps},
                                           ensure_ascii=False, indent=2), encoding="utf-8")
         print(f"wrote {a.out} ({len(steps)} steps)")

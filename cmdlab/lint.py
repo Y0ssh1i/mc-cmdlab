@@ -17,6 +17,37 @@ class Finding:
     message: str
 
 
+def brackets(line: str) -> str:
+    """Unbalanced {} [] () or an unclosed quote, ignoring what is inside quoted strings. '' when fine."""
+    stack, quote, esc = [], "", False
+    pairs = {"}": "{", "]": "[", ")": "("}
+    for k, ch in enumerate(line, 1):
+        if quote:
+            if esc:
+                esc = False
+            elif ch == "\\":
+                esc = True
+            elif ch == quote:
+                quote = ""
+            continue
+        if ch in "\"'" and (ch == '"' or (k > 1 and line[k - 2] in " :,[{=")):
+            quote = ch
+        elif ch in "{[(":
+            stack.append((ch, k))
+        elif ch in pairs:
+            if not stack or stack[-1][0] != pairs[ch]:
+                return f"'{ch}' at column {k} has no matching '{pairs[ch]}'"
+            stack.pop()
+    if quote:
+        return f"a {quote} string is not closed"
+    if stack:
+        return f"'{stack[-1][0]}' at column {stack[-1][1]} is never closed"
+    return ""
+
+
+TEXT_ARG = re.compile(r"^(?:execute .*? run )?(?:tellraw \S+|title \S+ (?:title|subtitle|actionbar)) (.+)$")
+
+
 def lint_lines(lines: list[str], version: str, file: str = "<script>") -> list[Finding]:
     table = versions.notes(version)
     out: list[Finding] = []
@@ -27,6 +58,19 @@ def lint_lines(lines: list[str], version: str, file: str = "<script>") -> list[F
         for rule in table.get("not_available", []):
             if re.search(rule["pattern"], line):
                 out.append(Finding("error", file, i, f"{rule['where']}: {rule['why']}"))
+        if line.startswith("$"):
+            continue  # macro lines are filled in at run time
+        bad = brackets(line)
+        if bad:
+            out.append(Finding("error", file, i, f"brackets/quotes: {bad}"))
+            continue
+        m = TEXT_ARG.match(line)
+        if m and table["pack_format"] < 71:  # JSON text until 1.21.5; SNBT text after that
+            try:
+                json.loads(m.group(1))
+            except ValueError as e:
+                out.append(Finding("warn", file, i, f"text is not valid JSON ({e.msg} at column {e.colno}); "
+                                                    "the game may still accept simple cases"))
     return out
 
 

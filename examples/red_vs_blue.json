@@ -1,0 +1,124 @@
+{
+  "version": "1.20.1",
+  "player_names": [
+    "Alice",
+    "Bob",
+    "Carol"
+  ],
+  "steps": [
+    {
+      "run": "gamerule sendCommandFeedback true"
+    },
+    {
+      "run": "scoreboard objectives add points dummy {\"text\":\"得点\",\"color\":\"gold\"}"
+    },
+    {
+      "run": "scoreboard objectives setdisplay sidebar points"
+    },
+    {
+      "run": "team add red {\"text\":\"赤\"}"
+    },
+    {
+      "run": "team modify red color red"
+    },
+    {
+      "run": "team modify red prefix {\"text\":\"[赤] \",\"color\":\"red\"}"
+    },
+    {
+      "run": "team add blue {\"text\":\"青\"}"
+    },
+    {
+      "run": "team modify blue color blue"
+    },
+    {
+      "run": "team modify blue prefix {\"text\":\"[青] \",\"color\":\"blue\"}"
+    },
+    {
+      "run": "team join red Alice"
+    },
+    {
+      "run": "team join blue Bob"
+    },
+    {
+      "run": "team join blue Carol"
+    },
+    {
+      "run": "bossbar add game:timer {\"text\":\"残り時間\"}"
+    },
+    {
+      "run": "bossbar set game:timer players @a"
+    },
+    {
+      "run": "bossbar set game:timer color yellow"
+    },
+    {
+      "run": "bossbar set game:timer max 100"
+    },
+    {
+      "run": "bossbar set game:timer value 60"
+    },
+    {
+      "run": "title @a subtitle {\"text\":\"赤 vs 青\"}"
+    },
+    {
+      "run": "title @a title {\"text\":\"ゲーム開始\",\"color\":\"green\"}",
+      "wait": 1,
+      "expect": {
+        "seen_by": "Carol",
+        "seen_contains": "ゲーム開始"
+      }
+    },
+    {
+      "run": "scoreboard players add @s points 3",
+      "as": "Alice"
+    },
+    {
+      "run": "scoreboard players add @s points 1",
+      "as": "Bob"
+    },
+    {
+      "run": "title @a actionbar {\"text\":\"Alice が3点!\"}",
+      "wait": 1,
+      "expect": {
+        "seen_by": "Bob",
+        "seen_contains": "Alice"
+      }
+    },
+    {
+      "run": "scoreboard players get Alice points",
+      "expect": {
+        "output_regex": "has 3 "
+      }
+    },
+    {
+      "run": "scoreboard players add Bob points x"
+    },
+    {
+      "blocks": [
+        {
+          "type": "impulse",
+          "cmd": "scoreboard players add Carol points 5"
+        },
+        {
+          "type": "chain",
+          "cmd": "execute if score Carol points matches 5.. run say 青のCarolが5点"
+        },
+        {
+          "type": "chain",
+          "cmd": "bossbar set game:timer value 30",
+          "conditional": true
+        }
+      ],
+      "origin": [
+        0,
+        -59,
+        0
+      ],
+      "wait": 1,
+      "expect": {
+        "seen_by": "Alice",
+        "seen_contains": "Carol"
+      }
+    }
+  ]
+}

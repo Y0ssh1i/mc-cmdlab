@@ -71,3 +71,30 @@ def test_blocked_commands():
     assert not runner.SAFE.match("stop")
     assert not runner.SAFE.match("/op Tester1")
     assert runner.SAFE.match("say stopwatch")
+
+
+def test_execute_chain_is_explained_in_order():
+    from cmdlab import explain
+    c = 'execute as @a[team=red] at @s if score @s points matches 5.. positioned ~ ~1 ~ run tellraw @s {"text":"win"}'
+    ja = explain.describe(c, "ja")
+    assert ja.index("として") < ja.index("なら") < ja.index("tellraw") and "「win」" in ja
+    en = explain.describe(c, "en")
+    assert en.startswith("as everyone[team=red]") and '"win"' in en
+
+
+def test_split_args_keeps_nbt_and_json_together():
+    from cmdlab import explain
+    w = explain.split_args('give @s diamond_sword{display:{Name:\'{"text":"a b"}\'}} 1')
+    assert w == ["give", "@s", 'diamond_sword{display:{Name:\'{"text":"a b"}\'}}', "1"]
+
+
+def test_lint_finds_unclosed_brackets_and_bad_json_text():
+    from cmdlab import lint
+    f = lint.lint_lines(['tellraw @a {"text":"hi"', 'tellraw @a {text:"hi"}', 'say [ok] it\'s fine'], "1.20.1")
+    assert [(x.line, x.level) for x in f] == [(1, "error"), (2, "warn")]
+
+
+def test_every_provider_is_listed_with_a_key_source():
+    from cmdlab import ai
+    assert {"anthropic", "openai", "gemini", "openrouter", "ollama", "openai_compatible"} <= set(ai.PROVIDERS)
+    assert ai._players(["Alice", "Bob"]) == "Alice, Bob" and ai._players(2) == "Tester1, Tester2"

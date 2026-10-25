@@ -13,10 +13,11 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 from . import ai, explain, lint, runner, versions
-from .bots import Bots
+from .bots import Bots, parse_names
 from .server import TestServer
 
 STATIC = Path(__file__).resolve().parent / "static"
+WORK_LAST = Path.home() / ".mc-cmdlab" / "last_run.json"
 STATE: dict = {"server": None, "bots": None, "last": None, "lock": threading.Lock()}
 
 
@@ -29,11 +30,17 @@ def _server(version: str | None = None) -> TestServer:
 
 
 def api(path: str, body: dict) -> dict:
+    if path == "/api/last":
+        if STATE["last"]:
+            return STATE["last"]["results"]
+        f = WORK_LAST
+        return json.loads(f.read_text(encoding="utf-8")) if f.exists() else []
     if path == "/api/versions":
         return {"supported": versions.supported()}
     if path == "/api/status":
         s, b = STATE["server"], STATE["bots"]
         return {"version": s.version if s else None, "running": bool(s and s.ready),
+                "screens": (b.screens(2) if b and body.get("screens") else None),
                 "players": (b.wait_spawned(0) if b else []), "log": (s.log[-40:] if s else [])}
     if path == "/api/setup":
         s = _server(body["version"])
@@ -54,7 +61,8 @@ def api(path: str, body: dict) -> dict:
         s = _server()
         if STATE["bots"]:
             STATE["bots"].stop()
-        b = Bots(s.port, versions.notes(s.version)["mineflayer_version"], int(body.get("count", 3)))
+        names = parse_names(body.get("names"), int(body.get("count", 3)))
+        b = Bots(s.port, versions.notes(s.version)["mineflayer_version"], names)
         STATE["bots"] = b
         return {"ok": True, "spawned": b.wait_spawned()}
     if path == "/api/lint":
@@ -77,18 +85,33 @@ def api(path: str, body: dict) -> dict:
         script = body["script"] if isinstance(body["script"], dict) else json.loads(body["script"])
         res = runner.run_steps(s, STATE["bots"], script["steps"], s.version)
         STATE["last"] = {"script": script, "results": [asdict(x) for x in res]}
+        WORK_LAST.write_text(json.dumps(STATE["last"]["results"], ensure_ascii=False), encoding="utf-8")
         return {"results": STATE["last"]["results"], "table": runner.to_table(res)}
+    if path == "/api/ai/providers":
+        return {"providers": {k: {"model": v[0], "env": v[1], "base_url": v[2] or ""} for k, v in ai.PROVIDERS.items()},
+                "default": ai.DEFAULT_PROVIDER}
     if path == "/api/ai/generate":
         s = _server(body.get("version"))
-        steps = ai.generate(body["request"], s.version, int(body.get("players", 3)))
-        return {"script": {"version": s.version, "players": int(body.get("players", 3)), "steps": steps}}
+        steps = ai.generate(body["request"], s.version, _ai_players(body), **_ai_opts(body))
+        return {"script": {"version": s.version, "player_names": _ai_players(body), "steps": steps}}
     if path == "/api/ai/fix":
         s = _server()
         last = STATE["last"] or {}
-        steps = ai.fix(body["request"], s.version, int(body.get("players", 3)),
-                       last.get("script", {}).get("steps", []), last.get("results", []))
+        steps = ai.fix(body["request"], s.version, _ai_players(body),
+                       last.get("script", {}).get("steps", []), last.get("results", []), **_ai_opts(body))
         return {"script": {"version": s.version, "steps": steps}}
     raise KeyError(path)
+
+
+def _ai_opts(body: dict) -> dict:
+    # the key is used for this one request only; it is never written to disk or logged
+    return {"provider": body.get("provider") or ai.DEFAULT_PROVIDER, "model": body.get("model") or "",
+            "key": body.get("key") or "", "base_url": body.get("base_url") or ""}
+
+
+def _ai_players(body: dict):
+    names = parse_names(body.get("names") or None, int(body.get("players", 3)))
+    return names or int(body.get("players", 3))
 
 
 class Handler(BaseHTTPRequestHandler):

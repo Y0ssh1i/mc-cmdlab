@@ -11,3 +11,4 @@ jobs:
       - run: pip install pytest
       - run: python -m pytest -q tests
       - run: python -m cmdlab lint examples/teams_and_scores.json --version 1.20.1
+      - run: python -m cmdlab lint examples/complex_commands.json --version 1.20.1
