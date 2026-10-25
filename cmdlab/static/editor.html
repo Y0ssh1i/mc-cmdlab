@@ -217,6 +217,7 @@ select { max-width:100%; text-overflow:ellipsis; }
   <h1>mc-cmdlab <small data-i="subtitle">コマンド設定ページ</small></h1>
   <div class="hright">
     <a href="/guide" id="lnkGuide" data-i="lnk_guide">コマンド集・使い方</a>
+    <a href="/commands" id="lnkCommands" data-i="lnk_commands">コマンド説明書</a>
     <a href="/" id="lnkMain" data-i="back_main">← メインページ(サーバー・プレイヤー・1回きりの台本)</a>
     <label class="check"><span data-i="lang">言語</span>
       <select id="lang" style="width:auto"><option value="ja">日本語</option><option value="en">English</option></select></label>
@@ -252,7 +253,8 @@ select { max-width:100%; text-overflow:ellipsis; }
     <div class="conrow">
       <h2 data-i="con_title">コンソール</h2>
       <span class="seg"><button id="conModeCmd" data-i="con_cmd">コマンド</button><button id="conModeAct" data-i="con_act">プレイヤーの動き</button></span>
-      <div id="conCmdBox" class="conin"><span class="slash">/</span><input id="conInput" class="mono" autocomplete="off" spellcheck="false" data-ip="con_ph" placeholder="say hello"><select id="conAs"></select></div>
+      <div id="conCmdBox" class="conin"><span class="slash">/</span><input id="conInput" class="mono" autocomplete="off" spellcheck="false" list="cmdList" data-ip="con_ph" placeholder="say hello">
+      <datalist id="cmdList"></datalist><select id="conAs"></select></div>
       <div id="conActBox" class="conin" style="display:none"></div>
       <button id="conRun" data-i="con_run">▶ 実行</button>
       <button class="ghost" id="conAdd" data-i="con_add">＋ 部品に足す</button>
@@ -2007,6 +2009,15 @@ window.addEventListener('beforeunload', (e) => { if (DIRTY) { e.preventDefault()
   if (q.get('con')) { $('conInput').value = q.get('con'); if (q.get('conrun') === '1') conRun(); }
   if (q.get('new') === '1') { DIRTY = false; newProject(); }
 })();
+<script>
+(async () => {
+  try {
+    const j = await (await fetch('/commands.json')).json();
+    const dl = document.getElementById('cmdList');
+    if (dl) dl.innerHTML = (j.commands||[]).map(c => `<option value="${c.name}">${c.syntax}</option>`).join('');
+  } catch (e) {}
+})();
+</script>
 </script>
 </body>
 </html>

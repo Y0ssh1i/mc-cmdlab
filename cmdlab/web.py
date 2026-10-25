@@ -219,6 +219,10 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(200, (STATIC / "editor.html").read_bytes(), "text/html; charset=utf-8")
         if self.path in ("/guide", "/guide.html") and (STATIC / "guide.html").exists():
             return self._send(200, (STATIC / "guide.html").read_bytes(), "text/html; charset=utf-8")
+        if self.path in ("/commands", "/commands.html") and (STATIC / "commands.html").exists():
+            return self._send(200, (STATIC / "commands.html").read_bytes(), "text/html; charset=utf-8")
+        if self.path == "/commands.json" and (STATIC / "commands.json").exists():
+            return self._send(200, (STATIC / "commands.json").read_bytes(), "application/json; charset=utf-8")
         if self.path == "/snippets.json" and (STATIC / "snippets.json").exists():
             return self._send(200, (STATIC / "snippets.json").read_bytes(), "application/json; charset=utf-8")
         if self.path.startswith("/api/"):
