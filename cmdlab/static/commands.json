@@ -1,0 +1,697 @@
+{
+  "format": 1,
+  "note": "mc-cmdlab command reference (commands.json). Used for autocomplete and the /commands page.",
+  "commands": [
+    {
+      "name": "say",
+      "syntax": "say <message>",
+      "desc_ja": "全員のチャットにメッセージを表示する",
+      "desc_en": "Show a message in everyone's chat",
+      "category": "basics",
+      "versions": [
+        "1.20.1",
+        "1.21.6"
+      ]
+    },
+    {
+      "name": "tellraw",
+      "syntax": "tellraw <targets> <message>",
+      "desc_ja": "指定した相手に整形した文字を表示する",
+      "desc_en": "Show formatted text to targets",
+      "category": "basics",
+      "versions": [
+        "1.20.1",
+        "1.21.6"
+      ]
+    },
+    {
+      "name": "title",
+      "syntax": "title <targets> (title|subtitle|actionbar) <text>",
+      "desc_ja": "画面にタイトル・サブタイトル・アクションバーを表示する",
+      "desc_en": "Show title/subtitle/action bar on screen",
+      "category": "basics",
+      "versions": [
+        "1.20.1",
+        "1.21.6"
+      ]
+    },
+    {
+      "name": "me",
+      "syntax": "me <action>",
+      "desc_ja": "自分の行動をチャットに表示する",
+      "desc_en": "Display an action in chat",
+      "category": "basics",
+      "versions": [
+        "1.20.1",
+        "1.21.6"
+      ]
+    },
+    {
+      "name": "msg",
+      "syntax": "msg <targets> <message>",
+      "desc_ja": "相手に個人メッセージを送る",
+      "desc_en": "Send a private message",
+      "category": "basics",
+      "versions": [
+        "1.20.1",
+        "1.21.6"
+      ]
+    },
+    {
+      "name": "teammsg",
+      "syntax": "teammsg <message>",
+      "desc_ja": "自分のチームにメッセージを送る",
+      "desc_en": "Send a message to your team",
+      "category": "basics",
+      "versions": [
+        "1.20.1",
+        "1.21.6"
+      ]
+    },
+    {
+      "name": "scoreboard",
+      "syntax": "scoreboard objectives (add|remove|list|setdisplay) ...",
+      "desc_ja": "スコアボードの項目を作る・消す・表示する",
+      "desc_en": "Create, remove or display scoreboard objectives",
+      "category": "data",
+      "versions": [
+        "1.20.1",
+        "1.21.6"
+      ]
+    },
+    {
+      "name": "scoreboard players",
+      "syntax": "scoreboard players (add|remove|set|get|reset|list|operation) ...",
+      "desc_ja": "プレイヤーのスコアを操作する",
+      "desc_en": "Modify player scores",
+      "category": "data",
+      "versions": [
+        "1.20.1",
+        "1.21.6"
+      ]
+    },
+    {
+      "name": "team",
+      "syntax": "team (add|remove|join|leave|modify|list|empty) ...",
+      "desc_ja": "チームを作る・設定する",
+      "desc_en": "Create and manage teams",
+      "category": "data",
+      "versions": [
+        "1.20.1",
+        "1.21.6"
+      ]
+    },
+    {
+      "name": "tag",
+      "syntax": "tag <targets> (add|remove|list) [tag]",
+      "desc_ja": "エンティティにタグを付ける・外す",
+      "desc_en": "Add or remove tags on entities",
+      "category": "data",
+      "versions": [
+        "1.20.1",
+        "1.21.6"
+      ]
+    },
+    {
+      "name": "bossbar",
+      "syntax": "bossbar (add|remove|set|get|list) ...",
+      "desc_ja": "ボスバーを作る・値を変える",
+      "desc_en": "Create and control boss bars",
+      "category": "data",
+      "versions": [
+        "1.20.1",
+        "1.21.6"
+      ]
+    },
+    {
+      "name": "data",
+      "syntax": "data (get|merge|modify|remove) (block|entity|storage) ...",
+      "desc_ja": "NBT データを読む・書く",
+      "desc_en": "Read or write NBT data",
+      "category": "data",
+      "versions": [
+        "1.20.1",
+        "1.21.6"
+      ]
+    },
+    {
+      "name": "execute",
+      "syntax": "execute [as|at|if|unless|store|...] run <command>",
+      "desc_ja": "条件付き・位置指定でコマンドを実行する",
+      "desc_en": "Run commands with conditions and context",
+      "category": "execute",
+      "versions": [
+        "1.20.1",
+        "1.21.6"
+      ]
+    },
+    {
+      "name": "function",
+      "syntax": "function <name>",
+      "desc_ja": "データパックの関数を実行する",
+      "desc_en": "Run a data-pack function",
+      "category": "execute",
+      "versions": [
+        "1.20.1",
+        "1.21.6"
+      ]
+    },
+    {
+      "name": "return",
+      "syntax": "return (run|fail) [value]",
+      "desc_ja": "関数から値を返して終了する",
+      "desc_en": "Return from a function",
+      "category": "execute",
+      "versions": [
+        "1.20.1",
+        "1.21.6"
+      ]
+    },
+    {
+      "name": "schedule",
+      "syntax": "schedule function <name> <time> [append|replace]",
+      "desc_ja": "後で関数を実行する予定を入れる",
+      "desc_en": "Schedule a function to run later",
+      "category": "execute",
+      "versions": [
+        "1.20.1",
+        "1.21.6"
+      ]
+    },
+    {
+      "name": "random",
+      "syntax": "random (value|roll) ...",
+      "desc_ja": "乱数を得る",
+      "desc_en": "Get a random value",
+      "category": "execute",
+      "versions": [
+        "1.21.6"
+      ]
+    },
+    {
+      "name": "give",
+      "syntax": "give <targets> <item> [count]",
+      "desc_ja": "アイテムを渡す",
+      "desc_en": "Give items to players",
+      "category": "player",
+      "versions": [
+        "1.20.1",
+        "1.21.6"
+      ]
+    },
+    {
+      "name": "clear",
+      "syntax": "clear [targets] [item] [max]",
+      "desc_ja": "持ち物を消す",
+      "desc_en": "Clear inventory",
+      "category": "player",
+      "versions": [
+        "1.20.1",
+        "1.21.6"
+      ]
+    },
+    {
+      "name": "tp",
+      "syntax": "tp [targets] <destination>",
+      "desc_ja": "プレイヤーを移動させる",
+      "desc_en": "Teleport players",
+      "category": "player",
+      "versions": [
+        "1.20.1",
+        "1.21.6"
+      ]
+    },
+    {
+      "name": "teleport",
+      "syntax": "teleport [targets] <destination>",
+      "desc_ja": "プレイヤーを移動させる(完全形)",
+      "desc_en": "Teleport players (full form)",
+      "category": "player",
+      "versions": [
+        "1.20.1",
+        "1.21.6"
+      ]
+    },
+    {
+      "name": "effect",
+      "syntax": "effect (give|clear) <targets> <effect> [duration] [amplifier]",
+      "desc_ja": "効果をかける・消す",
+      "desc_en": "Apply or clear status effects",
+      "category": "player",
+      "versions": [
+        "1.20.1",
+        "1.21.6"
+      ]
+    },
+    {
+      "name": "gamemode",
+      "syntax": "gamemode <mode> [target]",
+      "desc_ja": "ゲームモードを変える",
+      "desc_en": "Change game mode",
+      "category": "player",
+      "versions": [
+        "1.20.1",
+        "1.21.6"
+      ]
+    },
+    {
+      "name": "experience",
+      "syntax": "experience (add|set|query) <targets> <amount>",
+      "desc_ja": "経験値を操作する",
+      "desc_en": "Modify experience",
+      "category": "player",
+      "versions": [
+        "1.20.1",
+        "1.21.6"
+      ]
+    },
+    {
+      "name": "xp",
+      "syntax": "xp (add|set|query) <targets> <amount>",
+      "desc_ja": "experience の別名",
+      "desc_en": "Alias of experience",
+      "category": "player",
+      "versions": [
+        "1.20.1",
+        "1.21.6"
+      ]
+    },
+    {
+      "name": "enchant",
+      "syntax": "enchant <targets> <enchantment> [level]",
+      "desc_ja": "エンチャントを付ける",
+      "desc_en": "Enchant items",
+      "category": "player",
+      "versions": [
+        "1.20.1",
+        "1.21.6"
+      ]
+    },
+    {
+      "name": "kill",
+      "syntax": "kill [targets]",
+      "desc_ja": "エンティティを倒す・消す",
+      "desc_en": "Kill entities",
+      "category": "world",
+      "versions": [
+        "1.20.1",
+        "1.21.6"
+      ]
+    },
+    {
+      "name": "summon",
+      "syntax": "summon <entity> [pos] [nbt]",
+      "desc_ja": "エンティティを出現させる",
+      "desc_en": "Summon an entity",
+      "category": "world",
+      "versions": [
+        "1.20.1",
+        "1.21.6"
+      ]
+    },
+    {
+      "name": "setblock",
+      "syntax": "setblock <pos> <block> [mode]",
+      "desc_ja": "ブロックを1つ置く",
+      "desc_en": "Place a single block",
+      "category": "world",
+      "versions": [
+        "1.20.1",
+        "1.21.6"
+      ]
+    },
+    {
+      "name": "fill",
+      "syntax": "fill <from> <to> <block> [mode]",
+      "desc_ja": "範囲をブロックで埋める",
+      "desc_en": "Fill an area with blocks",
+      "category": "world",
+      "versions": [
+        "1.20.1",
+        "1.21.6"
+      ]
+    },
+    {
+      "name": "clone",
+      "syntax": "clone <begin> <end> <destination> [maskMode] [cloneMode]",
+      "desc_ja": "範囲をコピーする",
+      "desc_en": "Clone a region",
+      "category": "world",
+      "versions": [
+        "1.20.1",
+        "1.21.6"
+      ]
+    },
+    {
+      "name": "fillbiome",
+      "syntax": "fillbiome <from> <to> <biome>",
+      "desc_ja": "範囲のバイオームを変える",
+      "desc_en": "Fill an area with a biome",
+      "category": "world",
+      "versions": [
+        "1.20.1",
+        "1.21.6"
+      ]
+    },
+    {
+      "name": "place",
+      "syntax": "place (feature|jigsaw|structure|template) ...",
+      "desc_ja": "構造物・フィーチャーを配置する",
+      "desc_en": "Place features/structures",
+      "category": "world",
+      "versions": [
+        "1.20.1",
+        "1.21.6"
+      ]
+    },
+    {
+      "name": "weather",
+      "syntax": "weather (clear|rain|thunder) [duration]",
+      "desc_ja": "天気を変える",
+      "desc_en": "Change the weather",
+      "category": "world",
+      "versions": [
+        "1.20.1",
+        "1.21.6"
+      ]
+    },
+    {
+      "name": "time",
+      "syntax": "time (set|add|query) <value>",
+      "desc_ja": "時間を変える",
+      "desc_en": "Change or query time",
+      "category": "world",
+      "versions": [
+        "1.20.1",
+        "1.21.6"
+      ]
+    },
+    {
+      "name": "gamerule",
+      "syntax": "gamerule <rule> [value]",
+      "desc_ja": "ゲームルールを変える",
+      "desc_en": "Change a game rule",
+      "category": "world",
+      "versions": [
+        "1.20.1",
+        "1.21.6"
+      ]
+    },
+    {
+      "name": "difficulty",
+      "syntax": "difficulty <level>",
+      "desc_ja": "難易度を変える",
+      "desc_en": "Change difficulty",
+      "category": "world",
+      "versions": [
+        "1.20.1",
+        "1.21.6"
+      ]
+    },
+    {
+      "name": "defaultgamemode",
+      "syntax": "defaultgamemode <mode>",
+      "desc_ja": "デフォルトのゲームモードを変える",
+      "desc_en": "Set default game mode",
+      "category": "world",
+      "versions": [
+        "1.20.1",
+        "1.21.6"
+      ]
+    },
+    {
+      "name": "spawnpoint",
+      "syntax": "spawnpoint [target] [pos]",
+      "desc_ja": "リスポーン地点を設定する",
+      "desc_en": "Set respawn point",
+      "category": "world",
+      "versions": [
+        "1.20.1",
+        "1.21.6"
+      ]
+    },
+    {
+      "name": "setworldspawn",
+      "syntax": "setworldspawn [pos]",
+      "desc_ja": "ワールドのスポーン地点を設定する",
+      "desc_en": "Set world spawn",
+      "category": "world",
+      "versions": [
+        "1.20.1",
+        "1.21.6"
+      ]
+    },
+    {
+      "name": "worldborder",
+      "syntax": "worldborder (add|set|center|damage|get|warning) ...",
+      "desc_ja": "ワールド境界を操作する",
+      "desc_en": "Control the world border",
+      "category": "world",
+      "versions": [
+        "1.20.1",
+        "1.21.6"
+      ]
+    },
+    {
+      "name": "locate",
+      "syntax": "locate (structure|biome|poi) <name>",
+      "desc_ja": "構造物・バイオームを探す",
+      "desc_en": "Locate structures/biomes",
+      "category": "world",
+      "versions": [
+        "1.20.1",
+        "1.21.6"
+      ]
+    },
+    {
+      "name": "seed",
+      "syntax": "seed",
+      "desc_ja": "ワールドのシードを表示する",
+      "desc_en": "Show the world seed",
+      "category": "world",
+      "versions": [
+        "1.20.1",
+        "1.21.6"
+      ]
+    },
+    {
+      "name": "damage",
+      "syntax": "damage <target> <amount> [damageType]",
+      "desc_ja": "ダメージを与える",
+      "desc_en": "Deal damage",
+      "category": "world",
+      "versions": [
+        "1.21.6"
+      ]
+    },
+    {
+      "name": "ride",
+      "syntax": "ride <target> (mount|dismount|...)",
+      "desc_ja": "乗る・降りる",
+      "desc_en": "Mount/dismount entities",
+      "category": "world",
+      "versions": [
+        "1.20.1",
+        "1.21.6"
+      ]
+    },
+    {
+      "name": "spectate",
+      "syntax": "spectate [target] [player]",
+      "desc_ja": "観戦対象を変える",
+      "desc_en": "Spectate an entity",
+      "category": "world",
+      "versions": [
+        "1.20.1",
+        "1.21.6"
+      ]
+    },
+    {
+      "name": "advancement",
+      "syntax": "advancement (grant|revoke|test) ...",
+      "desc_ja": "実績を操作する",
+      "desc_en": "Grant/revoke advancements",
+      "category": "meta",
+      "versions": [
+        "1.20.1",
+        "1.21.6"
+      ]
+    },
+    {
+      "name": "recipe",
+      "syntax": "recipe (give|take) <targets> <recipe>",
+      "desc_ja": "レシピを教える・取り上げる",
+      "desc_en": "Give or take recipes",
+      "category": "meta",
+      "versions": [
+        "1.20.1",
+        "1.21.6"
+      ]
+    },
+    {
+      "name": "reload",
+      "syntax": "reload",
+      "desc_ja": "データパックを読み直す",
+      "desc_en": "Reload data packs",
+      "category": "meta",
+      "versions": [
+        "1.20.1",
+        "1.21.6"
+      ]
+    },
+    {
+      "name": "playsound",
+      "syntax": "playsound <sound> <source> <targets> [pos] [volume] [pitch]",
+      "desc_ja": "音を鳴らす",
+      "desc_en": "Play a sound",
+      "category": "meta",
+      "versions": [
+        "1.20.1",
+        "1.21.6"
+      ]
+    },
+    {
+      "name": "stopsound",
+      "syntax": "stopsound <targets> [source] [sound]",
+      "desc_ja": "音を止める",
+      "desc_en": "Stop sounds",
+      "category": "meta",
+      "versions": [
+        "1.20.1",
+        "1.21.6"
+      ]
+    },
+    {
+      "name": "particle",
+      "syntax": "particle <name> [pos] ...",
+      "desc_ja": "パーティクルを出す",
+      "desc_en": "Spawn particles",
+      "category": "meta",
+      "versions": [
+        "1.20.1",
+        "1.21.6"
+      ]
+    },
+    {
+      "name": "debug",
+      "syntax": "debug (start|stop|function) ...",
+      "desc_ja": "デバッグ情報を出す",
+      "desc_en": "Debug tools",
+      "category": "meta",
+      "versions": [
+        "1.20.1",
+        "1.21.6"
+      ]
+    },
+    {
+      "name": "forceload",
+      "syntax": "forceload (add|remove|query) ...",
+      "desc_ja": "チャンクを強制読み込みする",
+      "desc_en": "Force-load chunks",
+      "category": "world",
+      "versions": [
+        "1.20.1",
+        "1.21.6"
+      ]
+    },
+    {
+      "name": "spreadplayers",
+      "syntax": "spreadplayers <center> <spreadDistance> <maxRange> <respectTeams> <targets>",
+      "desc_ja": "プレイヤーを散らして配置する",
+      "desc_en": "Spread players around",
+      "category": "world",
+      "versions": [
+        "1.20.1",
+        "1.21.6"
+      ]
+    },
+    {
+      "name": "help",
+      "syntax": "help [command]",
+      "desc_ja": "コマンドの使い方を表示する",
+      "desc_en": "Show command help",
+      "category": "meta",
+      "versions": [
+        "1.20.1",
+        "1.21.6"
+      ]
+    },
+    {
+      "name": "list",
+      "syntax": "list [uuids]",
+      "desc_ja": "接続中のプレイヤーを表示する",
+      "desc_en": "List online players",
+      "category": "meta",
+      "versions": [
+        "1.20.1",
+        "1.21.6"
+      ]
+    },
+    {
+      "name": "whitelist",
+      "syntax": "whitelist (add|remove|list|on|off|reload) ...",
+      "desc_ja": "ホワイトリストを操作する",
+      "desc_en": "Manage whitelist",
+      "category": "meta",
+      "versions": [
+        "1.20.1",
+        "1.21.6"
+      ]
+    },
+    {
+      "name": "ban",
+      "syntax": "ban <targets> [reason]",
+      "desc_ja": "プレイヤーをBANする",
+      "desc_en": "Ban players",
+      "category": "meta",
+      "versions": [
+        "1.20.1",
+        "1.21.6"
+      ]
+    },
+    {
+      "name": "pardon",
+      "syntax": "pardon <targets>",
+      "desc_ja": "BANを解除する",
+      "desc_en": "Pardon players",
+      "category": "meta",
+      "versions": [
+        "1.20.1",
+        "1.21.6"
+      ]
+    },
+    {
+      "name": "op",
+      "syntax": "op <targets>",
+      "desc_ja": "OP権限を与える",
+      "desc_en": "Grant operator",
+      "category": "meta",
+      "versions": [
+        "1.20.1",
+        "1.21.6"
+      ]
+    },
+    {
+      "name": "deop",
+      "syntax": "deop <targets>",
+      "desc_ja": "OP権限を外す",
+      "desc_en": "Remove operator",
+      "category": "meta",
+      "versions": [
+        "1.20.1",
+        "1.21.6"
+      ]
+    },
+    {
+      "name": "kick",
+      "syntax": "kick <targets> [reason]",
+      "desc_ja": "プレイヤーを退出させる",
+      "desc_en": "Kick players",
+      "category": "meta",
+      "versions": [
+        "1.20.1",
+        "1.21.6"
+      ]
+    }
+  ]
+}
