@@ -43,6 +43,11 @@
       "pattern": "\\btick (freeze|step|sprint|query)",
       "where": "/tick",
       "why": "/tick starts in 1.20.3"
+    },
+    {
+      "pattern": "setdisplay\\s+below_name\\b",
+      "where": "scoreboard display slot",
+      "why": "1.20.1 calls it belowName; below_name starts in 1.20.2"
     }
   ],
   "notes": "Data pack folder names are plural in 1.20.1 (functions/, advancements/ ...). They became singular (function/, advancement/ ...) in 1.21."

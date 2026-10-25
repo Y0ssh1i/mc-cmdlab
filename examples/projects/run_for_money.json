@@ -1,0 +1,324 @@
+{
+ "version": "1.20.1",
+ "title": "逃走中(部品とシナリオ)",
+ "namespace": "game",
+ "player_names": [
+  "Alice",
+  "Bob",
+  "Carol",
+  "Dave"
+ ],
+ "modules": [
+  {
+   "id": "setup",
+   "label": "準備",
+   "kind": "function",
+   "note": "チーム・スコア・ボスバーを作る",
+   "lines": [
+    "team add hunter {\"text\":\"ハンター\"}",
+    "team modify hunter color dark_gray",
+    "team add runner {\"text\":\"逃走者\"}",
+    "team modify runner color green",
+    "team add jail {\"text\":\"確保\"}",
+    "team modify jail color red",
+    "team join hunter Alice",
+    "team join runner Bob",
+    "team join runner Carol",
+    "team join runner Dave",
+    "scoreboard objectives add game dummy",
+    "scoreboard objectives add money dummy {\"text\":\"賞金\",\"color\":\"gold\"}",
+    "scoreboard objectives add hurt minecraft.custom:minecraft.damage_taken",
+    "scoreboard objectives setdisplay sidebar money",
+    "scoreboard players set #state game 0",
+    "bossbar add game:time {\"text\":\"残り時間\"}",
+    "bossbar set game:time players @a",
+    "bossbar set game:time max 10",
+    "gamemode adventure @a",
+    "difficulty easy"
+   ]
+  },
+  {
+   "id": "start",
+   "label": "開始",
+   "kind": "function",
+   "note": "ロビーのボタンから呼ばれる",
+   "lines": [
+    "scoreboard players set #state game 1",
+    "scoreboard players set #time game 10",
+    "scoreboard players set #ticks game 0",
+    "scoreboard players set @a[team=runner] money 0",
+    "scoreboard players reset @a hurt",
+    "tp Alice 0 -60 0",
+    "tp Bob 2 -60 0",
+    "tp Dave 1 -60 2",
+    "title @a title {\"text\":\"逃走中 スタート\",\"color\":\"gold\"}"
+   ]
+  },
+  {
+   "id": "tick_main",
+   "label": "毎 tick",
+   "kind": "function",
+   "tick": true,
+   "note": "試合中だけ時計を進める",
+   "lines": [
+    "execute if score #state game matches 1 run function game:timer_step"
+   ]
+  },
+  {
+   "id": "timer_step",
+   "label": "1 tick の処理",
+   "kind": "function",
+   "lines": [
+    "scoreboard players add #ticks game 1",
+    "execute if score #ticks game matches 20.. run scoreboard players remove #time game 1",
+    "execute if score #ticks game matches 20.. run scoreboard players add @a[team=runner] money 100",
+    "execute if score #ticks game matches 20.. run scoreboard players set #ticks game 0",
+    "execute store result bossbar game:time value run scoreboard players get #time game",
+    "execute as @a[team=runner,scores={hurt=1..}] run function game:caught",
+    "execute unless entity @a[team=runner] run function game:end_hunter",
+    "execute if score #time game matches ..0 run function game:end_runner"
+   ]
+  },
+  {
+   "id": "caught",
+   "label": "確保されたとき",
+   "kind": "function",
+   "lines": [
+    "tellraw @a [{\"selector\":\"@s\",\"color\":\"red\"},{\"text\":\" 確保！\",\"color\":\"red\"}]",
+    "title @s title {\"text\":\"確保\",\"color\":\"red\"}",
+    "team join jail @s",
+    "scoreboard players reset @s hurt"
+   ]
+  },
+  {
+   "id": "end_hunter",
+   "label": "終了: ハンターの勝ち",
+   "kind": "function",
+   "lines": [
+    "scoreboard players set #state game 0",
+    "title @a title {\"text\":\"ハンターの勝利\",\"color\":\"dark_gray\"}"
+   ]
+  },
+  {
+   "id": "end_runner",
+   "label": "終了: 逃げ切り",
+   "kind": "function",
+   "lines": [
+    "scoreboard players set #state game 0",
+    "title @a title {\"text\":\"逃走成功！\",\"color\":\"gold\"}",
+    "tellraw @a[team=runner] [{\"text\":\"賞金 \"},{\"score\":{\"name\":\"@s\",\"objective\":\"money\"}},{\"text\":\" 円を獲得\"}]"
+   ]
+  },
+  {
+   "id": "lobby_button",
+   "label": "ロビーの開始ボタン",
+   "kind": "blocks",
+   "origin": [
+    5,
+    -60,
+    5
+   ],
+   "facing": "east",
+   "trigger": "button",
+   "note": "上のボタンを押すと開始",
+   "blocks": [
+    {
+     "type": "impulse",
+     "cmd": "function game:start"
+    },
+    {
+     "type": "chain",
+     "cmd": "tellraw @a {\"text\":\"ボタンで試合が始まった\",\"color\":\"yellow\"}"
+    }
+   ],
+   "expect_success": false
+  },
+  {
+   "id": "hud_line",
+   "label": "賞金の表示(リピート)",
+   "kind": "blocks",
+   "origin": [
+    5,
+    -60,
+    9
+   ],
+   "facing": "east",
+   "note": "リピート→チェーン→上へ曲がるチェーン(条件付き)",
+   "blocks": [
+    {
+     "type": "repeat",
+     "cmd": "execute if score #state game matches 1",
+     "auto": true
+    },
+    {
+     "type": "chain",
+     "cmd": "title @a[team=runner] actionbar [{\"text\":\"賞金 \",\"color\":\"gold\"},{\"score\":{\"name\":\"@s\",\"objective\":\"money\"}},{\"text\":\" 円\"}]",
+     "conditional": true,
+     "facing": "up"
+    },
+    {
+     "type": "chain",
+     "cmd": "title @a[team=jail] actionbar {\"text\":\"牢屋で待機中\",\"color\":\"red\"}",
+     "auto": true
+    }
+   ],
+   "expect_success": false
+  },
+  {
+   "id": "press_start",
+   "label": "Carol がボタンを押す",
+   "kind": "steps",
+   "steps": [
+    {
+     "player": "Carol",
+     "do": "goto",
+     "x": 5,
+     "y": -60,
+     "z": 4,
+     "wait": 0.5
+    },
+    {
+     "player": "Carol",
+     "do": "use_block",
+     "x": 5,
+     "y": -59,
+     "z": 5,
+     "wait": 1.5,
+     "expect": {
+      "seen_by": "Bob",
+      "seen_contains": "スタート"
+     }
+    }
+   ]
+  },
+  {
+   "id": "catch_bob",
+   "label": "ハンターが Bob を捕まえる",
+   "kind": "steps",
+   "steps": [
+    {
+     "player": "Alice",
+     "do": "attack",
+     "target": "Bob",
+     "times": 1,
+     "chase": true,
+     "wait": 1,
+     "expect": {
+      "hurt": "Bob",
+      "seen_by": "Carol",
+      "seen_contains": "確保"
+     }
+    }
+   ]
+  },
+  {
+   "id": "catch_all",
+   "label": "ハンターが全員を捕まえる",
+   "kind": "steps",
+   "steps": [
+    {
+     "player": "Alice",
+     "do": "attack",
+     "target": "Bob",
+     "times": 1,
+     "chase": true,
+     "wait": 0.8
+    },
+    {
+     "player": "Alice",
+     "do": "attack",
+     "target": "Dave",
+     "times": 1,
+     "chase": true,
+     "wait": 0.8
+    },
+    {
+     "player": "Alice",
+     "do": "attack",
+     "target": "Carol",
+     "times": 1,
+     "chase": true,
+     "wait": 1.2,
+     "expect": {
+      "seen_by": "Bob",
+      "seen_contains": "ハンターの勝利"
+     }
+    }
+   ]
+  }
+ ],
+ "scenarios": [
+  {
+   "id": "normal",
+   "label": "普通に1試合(逃げ切り)",
+   "steps": [
+    {
+     "call": "setup"
+    },
+    {
+     "call": "hud_line"
+    },
+    {
+     "call": "lobby_button"
+    },
+    {
+     "call": "press_start"
+    },
+    {
+     "call": "catch_bob"
+    },
+    {
+     "run": "team list jail",
+     "expect": {
+      "output_contains": "Bob"
+     }
+    },
+    {
+     "wait": 11
+    },
+    {
+     "run": "scoreboard players get #state game",
+     "expect": {
+      "output_contains": "has 0"
+     }
+    },
+    {
+     "run": "scoreboard players get Carol money",
+     "expect": {
+      "output_regex": "has [1-9][0-9]+"
+     }
+    }
+   ]
+  },
+  {
+   "id": "all_caught",
+   "label": "全員確保(ハンターの勝ち)",
+   "steps": [
+    {
+     "call": "setup"
+    },
+    {
+     "call": "start"
+    },
+    {
+     "run": "tp Carol 3 -60 1"
+    },
+    {
+     "call": "catch_all"
+    },
+    {
+     "run": "scoreboard players get #state game",
+     "expect": {
+      "output_contains": "has 0"
+     }
+    },
+    {
+     "run": "execute unless entity @a[team=runner]",
+     "expect": {
+      "output_contains": "Test passed"
+     }
+    }
+   ]
+  }
+ ]
+}

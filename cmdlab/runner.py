@@ -59,24 +59,49 @@ def _nbt_str(s: str) -> str:
     return s.replace("\\", "\\\\").replace('"', '\\"')
 
 
+DIRS = {"east": (1, 0, 0), "west": (-1, 0, 0), "south": (0, 0, 1), "north": (0, 0, -1), "up": (0, 1, 0), "down": (0, -1, 0)}
+
+
+def layout(step: dict) -> list[tuple[int, int, int, str]]:
+    """Where each command block of a line goes, like a real build: a line starts at "origin" and runs in
+    "facing" (default east); a block may set its own "facing" to turn the line (up, north ...), or give an
+    exact "pos". The next chain block always sits in front of the previous block, as in the game."""
+    x, y, z = step.get("origin", [0, -59, 0])
+    facing = step.get("facing", "east")
+    out = []
+    for b in step["blocks"]:
+        if b.get("pos"):
+            x, y, z = b["pos"]
+        facing = b.get("facing", facing)
+        out.append((x, y, z, facing))
+        dx, dy, dz = DIRS[facing]
+        x, y, z = x + dx, y + dy, z + dz
+    return out
+
+
 def place_blocks(r, step: dict) -> list[tuple[int, int, int]]:
-    """Place a command block line (impulse/chain/repeat, conditional, always-active or needs-redstone).
-    Blocks go east from the origin and face east, so a chain runs left to right. Returns block positions."""
-    x0, y0, z0 = step.get("origin", [0, -59, 0])
+    """Place a command block line (impulse/chain/repeat, conditional, always-active or needs-redstone) the way
+    it would be built in the world, then power it: "trigger" is "redstone_block" (default for an impulse block
+    without auto), "button" (a stone button is placed on top so a test player can press it), or "none"."""
     blocks = step["blocks"]
-    r.command(f"fill {x0 - 1} {y0} {z0} {x0 + len(blocks)} {y0} {z0} air")
+    spots = layout(step)
     pos = []
-    for k, b in enumerate(blocks):
+    for k, (b, (x, y, z, facing)) in enumerate(zip(blocks, spots)):
         kind = BLOCK_ID[b.get("type", "chain" if k else "impulse")]
         cond = "true" if b.get("conditional") else "false"
         auto = 1 if b.get("auto", b.get("type", "chain" if k else "impulse") != "impulse") else 0
-        x = x0 + k
-        r.command(f'setblock {x} {y0} {z0} minecraft:{kind}[facing=east,conditional={cond}]'
+        r.command(f'setblock {x} {y} {z} minecraft:{kind}[facing={facing},conditional={cond}]'
                   f'{{Command:"{_nbt_str(b["cmd"])}",auto:{auto}b,TrackOutput:1b}} replace')
-        pos.append((x, y0, z0))
+        pos.append((x, y, z))
     first = blocks[0]
-    if first.get("power", first.get("type", "impulse") == "impulse" and not first.get("auto")):
-        r.command(f"setblock {x0 - 1} {y0} {z0} minecraft:redstone_block")  # needs-redstone: power it once
+    x0, y0, z0, f0 = spots[0]
+    needs_power = first.get("type", "impulse") != "chain" and not first.get("auto")
+    trigger = step.get("trigger", "redstone_block" if needs_power else "none")
+    if trigger == "redstone_block":
+        dx, dy, dz = DIRS[f0]
+        r.command(f"setblock {x0 - dx} {y0 - dy} {z0 - dz} minecraft:redstone_block")  # behind the first block
+    elif trigger == "button":
+        r.command(f"setblock {x0} {y0 + 1} {z0} minecraft:stone_button[face=floor]")
     return pos
 
 
@@ -105,6 +130,10 @@ def judge(step: dict, output: str, seen: list[dict]) -> tuple[bool, str]:
             who = exp[key]
             if not any(e.get("event") == ev and e.get("username") == who for e in seen):
                 return False, f"{who} was not {'killed' if key == 'died' else 'hurt'}"
+    if "heard" in exp:  # {"heard": "experience_orb"} or {"heard": "...", "heard_by": "Alice"}: a sound reached a player
+        who = exp.get("heard_by")
+        if not any(e.get("event") == "sound" and exp["heard"] in str(e.get("name", "")) and (not who or e.get("username") == who) for e in seen):
+            return False, f"{who or 'no player'} heard no sound matching '{exp['heard']}'"
     if "seen_contains" in exp:
         who = exp.get("seen_by")
         texts = [str(e.get("msg") or e.get("text") or "") for e in seen if not who or e.get("username") == who]
@@ -140,7 +169,8 @@ def write_functions(server, steps: list[dict], version: str) -> dict[int, str]:
     return bad
 
 
-def run_steps(server, bots, steps: list[dict], version: str) -> list[StepResult]:
+def run_steps(server, bots, steps: list[dict], version: str, only: set[int] | None = None) -> list[StepResult]:
+    """Run the steps in order. With "only" (step numbers), run just those steps and skip the rest."""
     results: list[StepResult] = []
     problems = lint.lint_lines([s.get("run", "") or " ; ".join(b.get("cmd", "") for b in s.get("blocks", []))
                                 for s in steps], version)
@@ -154,6 +184,8 @@ def run_steps(server, bots, steps: list[dict], version: str) -> list[StepResult]
             time.sleep(1.5)
             load_errors = explain.function_errors(server.log[mark:])
         for i, step in enumerate(steps, 1):
+            if only and i not in only:
+                continue
             if step.get("function"):
                 # many lines run together as a data pack function (optionally as a player, with macro arguments)
                 name = f"cmdlab:step{i}"
@@ -223,6 +255,8 @@ def run_steps(server, bots, steps: list[dict], version: str) -> list[StepResult]
                 want = step.get("expect_success")  # list of booleans per block; default: every unconditional block succeeds
                 fails = []
                 for k, ((sc, lo), b) in enumerate(zip(states, step["blocks"])):
+                    if want is False:  # a watcher line (e.g. a repeat that waits for a condition): no success expected
+                        continue
                     should = want[k] if want else not b.get("conditional")
                     if should and sc <= 0:
                         fails.append(f"block {k + 1} ({b.get('type', 'chain' if k else 'impulse')}) did not succeed: {lo[-120:]}")
@@ -231,8 +265,12 @@ def run_steps(server, bots, steps: list[dict], version: str) -> list[StepResult]
                                               if k.startswith("seen")}}, "", seen)
                 why = "; ".join(fails + ([why2] if not ok2 else []))
                 if step.get("cleanup", True):
-                    x0, y0, z0 = step.get("origin", [0, -59, 0])
-                    r.command(f"fill {x0 - 1} {y0} {z0} {x0 + len(pos)} {y0} {z0} air")
+                    for (x, y, z) in pos:
+                        r.command(f"setblock {x} {y} {z} air")
+                    x0, y0, z0, f0 = layout(step)[0]
+                    dx, dy, dz = DIRS[f0]
+                    r.command(f"setblock {x0 - dx} {y0 - dy} {z0 - dz} air")
+                    r.command(f"setblock {x0} {y0 + 1} {z0} air")
                 results.append(StepResult(i, f"{len(pos)} command blocks: " + " → ".join(b["cmd"][:30] for b in step["blocks"]),
                                           not why, " | ".join(f"#{k + 1} success={sc}" for k, (sc, _) in enumerate(states)),
                                           [str(e.get("msg") or e.get("text") or "") for e in seen][:20], why,
@@ -262,7 +300,8 @@ def run_steps(server, bots, steps: list[dict], version: str) -> list[StepResult]
                                       why, round(time.time() - t0, 2)))
             if bots:
                 results[-1].screens = bots.screens()
-    for res, step in zip(results, steps):
+    for res in results:
+        step = steps[res.i - 1]
         if step.get("blocks"):
             n = len(step["blocks"])
             parts = [explain.describe(b["cmd"], "ja") for b in step["blocks"]]
@@ -286,6 +325,9 @@ def run_steps(server, bots, steps: list[dict], version: str) -> list[StepResult]
             if not res.ok:
                 res.where_ja = explain.error_location(res.command, res.output, "ja")
                 res.where_en = explain.error_location(res.command, res.output, "en")
+        if step.get("_module"):
+            res.explain_ja = f"[{step['_module']}] " + res.explain_ja
+            res.explain_en = f"[{step['_module']}] " + res.explain_en
     return results
 
 

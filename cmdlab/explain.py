@@ -318,9 +318,15 @@ FUNC_ERR = re.compile(r"Failed to load function ([\w:/.-]+)|Couldn't (?:load|par
 
 
 def function_errors(log_lines: list[str]) -> list[str]:
-    """Pick the data pack load errors (which function, which line, why) out of the server log after /reload."""
-    out = []
+    """Pick the data pack load errors (which function, which line, why) out of the server log after /reload.
+    The reason ("Whilst parsing command on line N: ...") is on the exception line after "Failed to load function";
+    join them so each error says function + line + reason."""
+    out: list[str] = []
     for line in log_lines:
+        m = re.search(r"Whilst parsing command on line (\d+): (.*)$", line)
+        if m and out and out[-1].startswith("Failed to load function") and "line" not in out[-1]:
+            out[-1] += f" — line {m.group(1)}: {m.group(2).strip()}"
+            continue
         if FUNC_ERR.search(line) or ("ERROR" in line and "function" in line.lower()):
             out.append(line.split("]: ", 1)[-1].strip())
     return out[-50:]
@@ -338,6 +344,14 @@ ACTIONS = {
     "select": ("{p} がホットバーの {slot} 番を持つ", "{p} holds hotbar slot {slot}"),
     "use": ("{p} が持っている物を使う", "{p} uses the held item"),
     "respawn": ("{p} がリスポーンする", "{p} respawns"),
+    "walk": ("{p} が ({x}, {z}) までまっすぐ歩く", "{p} walks straight to ({x}, {z})"),
+    "use_block": ("{p} が ({x}, {y}, {z}) のブロックを右クリックする", "{p} right-clicks the block at ({x}, {y}, {z})"),
+    "use_entity": ("{p} が {who} を右クリックする", "{p} right-clicks {who}"),
+    "dig": ("{p} が ({x}, {y}, {z}) のブロックを壊す", "{p} breaks the block at ({x}, {y}, {z})"),
+    "place": ("{p} が ({x}, {y}, {z}) にブロックを置く", "{p} places a block at ({x}, {y}, {z})"),
+    "click_slot": ("{p} が開いた画面の {slot} 番をクリックする", "{p} clicks slot {slot} in the open window"),
+    "close_window": ("{p} が画面を閉じる", "{p} closes the window"),
+    "drop": ("{p} が持っている物を捨てる", "{p} drops the held item"),
 }
 
 
@@ -349,6 +363,9 @@ def describe_action(step: dict, lang: str = "ja") -> str:
     a.setdefault("dir", "forward")
     a["p"] = step.get("player", "?")
     a["text"] = str(step.get("text", "")).lstrip("/")
+    a.setdefault("who", step.get("target") or step.get("name") or step.get("type") or "?")
+    for k in ("x", "y", "z", "slot"):
+        a.setdefault(k, "?")
     ja, en = ACTIONS.get(step["do"], ("{p} が " + step["do"] + " をする", "{p} does " + step["do"]))
     try:
         return (ja if lang == "ja" else en).format(**a)

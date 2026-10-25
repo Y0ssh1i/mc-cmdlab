@@ -41,6 +41,9 @@ pre.log { background:var(--code); border-radius:8px; padding:8px; max-height:200
 .mc-tab div { background:rgba(255,255,255,.12); margin:2px 0; padding:1px 6px; }
 .mc-chat { position:absolute; left:6px; bottom:64px; width:52%; font-size:13px; } .mc-chat div { background:rgba(0,0,0,.45); padding:1px 4px; text-shadow:none; }
 .mc-action { position:absolute; bottom:64px; width:100%; text-align:center; font-size:14px; }
+.mc-extra { position:absolute; left:6px; top:6px; max-width:40%; font-size:12px; text-shadow:none; } .mc-extra div { background:rgba(0,0,0,.45); padding:1px 5px; margin-bottom:2px; }
+.mc-window { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); background:#c6c6c6; color:#333; border:3px solid #555; padding:6px; font-size:12px; text-shadow:none; display:none; max-width:60%; }
+.mc-window .slots { display:grid; grid-template-columns:repeat(9, 1fr); gap:2px; margin-top:4px; } .mc-window .slots div { background:#8b8b8b; color:#fff; min-height:30px; font-size:10px; padding:2px; overflow:hidden; }
 .mc-hud { position:absolute; bottom:8px; left:50%; transform:translateX(-50%); width:364px; height:44px; background:rgba(0,0,0,.4); border:2px solid #222; font-size:12px; text-align:center; line-height:40px; text-shadow:none; }
 .c0{color:#000}.c1{color:#00a}.c2{color:#0a0}.c3{color:#0aa}.c4{color:#a00}.c5{color:#a0a}.c6{color:#fa0}.c7{color:#aaa}.c8{color:#555}.c9{color:#55f}.ca{color:#5f5}.cb{color:#5ff}.cc{color:#f55}.cd{color:#f5f}.ce{color:#ff5}.cf{color:#fff}
 
@@ -78,6 +81,7 @@ pre.log { background:var(--code); border-radius:8px; padding:8px; max-height:200
     <input id="count" type="number" min="1" max="40" value="3">
     <label for="names" data-i="l_names">名前(空なら Tester1, Tester2 …。カンマか改行で区切る・英数字と _ で3〜16文字)</label>
     <textarea id="names" style="min-height:60px" placeholder="Alice, Bob, Carol"></textarea>
+    <label style="display:flex;gap:6px;align-items:center;margin:6px 0"><input type="checkbox" id="opPlayers" style="width:auto"> <span data-i="l_op">テスト用プレイヤーを OP にする(プレイヤー自身が管理者コマンドを打てる)</span></label>
     <div class="row"><button id="btnPlayers">入れる</button><span id="players" class="status"></span></div>
 
     <h2 style="margin-top:18px"><span>3</span>データパック(任意)</h2>
@@ -134,6 +138,8 @@ pre.log { background:var(--code); border-radius:8px; padding:8px; max-height:200
       <div class="mc-chat" id="mcChat"></div>
       <div class="mc-action" id="mcAct"></div>
       <div class="mc-hud" id="mcHud"></div>
+      <div class="mc-extra" id="mcExtra"></div>
+      <div class="mc-window" id="mcWindow"></div>
     </div>
     <div class="status" id="mcNote"></div>
     </div>
@@ -171,10 +177,10 @@ const EXAMPLE = {
 const I18N = {
   ja: { lang:'言語', tagline:'マイクラ(Java 版)のコマンドを、人を集めずに、コマンドブロックを置かずに試す環境。手元だけで動きます。',
         h_result:'結果', h_story:'順番に何が起きたか', c_res:'結果', c_what:'していること', c_cmd:'コマンド', c_reply:'サーバーの返事・エラーの場所', c_seen:'プレイヤーが見たもの',
-        ok:'OK', ng:'失敗', passed:(a,b)=>`${a} / ${b} 段が成功`, saw:'見えたもの', h_screen:'マイクラの画面での見え方', l_player:'プレイヤー', l_step:'段', l_tab:'Tab を押した状態', h_log:'サーバーのログ', l_count:'人数', l_names:'名前(空なら Tester1, Tester2 …。カンマか改行で区切る・英数字と _ で3〜16文字)', l_prov:'AI の接続先', l_model:'モデル', l_key:'API キー(空なら手元の環境変数。ここに入れた鍵は保存しません)' },
+        ok:'OK', ng:'失敗', passed:(a,b)=>`${a} / ${b} 段が成功`, saw:'見えたもの', h_screen:'マイクラの画面での見え方', l_player:'プレイヤー', l_step:'段', l_tab:'Tab を押した状態', h_log:'サーバーのログ', l_count:'人数', l_names:'名前(空なら Tester1, Tester2 …。カンマか改行で区切る・英数字と _ で3〜16文字)', l_prov:'AI の接続先', l_op:'テスト用プレイヤーを OP にする(プレイヤー自身が管理者コマンドを打てる)', l_model:'モデル', l_key:'API キー(空なら手元の環境変数。ここに入れた鍵は保存しません)' },
   en: { lang:'Language', tagline:'Test Minecraft (Java) commands without gathering people or placing command blocks. Runs only on your PC.',
         h_result:'Results', h_story:'What happened, step by step', c_res:'Result', c_what:'What it does', c_cmd:'Command', c_reply:'Server reply / error location', c_seen:'What players saw',
-        ok:'OK', ng:'Failed', passed:(a,b)=>`${a} / ${b} steps passed`, saw:'seen', h_screen:'How it looks in Minecraft', l_player:'Player', l_step:'Step', l_tab:'Holding Tab', h_log:'Server log', l_count:'Number of players', l_names:'Names (empty = Tester1, Tester2 ...; comma or newline; 3-16 letters, digits, _)', l_prov:'AI provider', l_model:'Model', l_key:'API key (empty = your environment variable; a key typed here is never saved)' } };
+        ok:'OK', ng:'Failed', passed:(a,b)=>`${a} / ${b} steps passed`, saw:'seen', h_screen:'How it looks in Minecraft', l_player:'Player', l_step:'Step', l_tab:'Holding Tab', h_log:'Server log', l_count:'Number of players', l_names:'Names (empty = Tester1, Tester2 ...; comma or newline; 3-16 letters, digits, _)', l_prov:'AI provider', l_op:'Make test players OP (they can run admin commands themselves)', l_model:'Model', l_key:'API key (empty = your environment variable; a key typed here is never saved)' } };
 let LAST = [];
 function L() { return I18N[$('lang').value] || I18N.ja; }
 function applyLang() {
@@ -194,6 +200,7 @@ function mcText(el, t) {  // render Minecraft section-sign color codes
   }
 }
 function teamOf(scr, name) { return (scr.teams || []).find((t) => (t.members || []).includes(name)); }
+function mcPlain(s) { return String(s || '').replace(/§./g, ''); }
 function drawScreen() {
   const en = $('lang').value === 'en';
   const note = $('mcNote');
@@ -226,6 +233,20 @@ function drawScreen() {
   if (scr.tabFooter) { const d = document.createElement('div'); mcText(d, scr.tabFooter); tab.appendChild(d); }
   const chat = $('mcChat'); chat.innerHTML = '';
   for (const c of (scr.chat || []).slice(-6)) { const d = document.createElement('div'); mcText(d, c); chat.appendChild(d); }
+  const ex = $('mcExtra'); ex.innerHTML = '';
+  const line = (t) => { const d = document.createElement('div'); mcText(d, t); ex.appendChild(d); };
+  for (const e of scr.effects || []) line((en ? 'Effect ' : '効果 ') + `${e.name} ${e.level} (${e.seconds}s)`);
+  if (scr.belowName) line((en ? 'Below names: ' : '名前の下: ') + mcPlain(scr.belowName.title) + ' ' + (scr.belowName.scores || []).map((v) => `${v.name} ${v.score}`).join(' / '));
+  for (const t of scr.teamSidebars || []) line((en ? 'Team sidebar: ' : 'チームのサイドバー: ') + mcPlain(t.title));
+  if ((scr.sounds || []).length) line((en ? 'Sounds: ' : '音: ') + scr.sounds.slice(-4).map((v) => v.replace('minecraft:', '')).join(', '));
+  const win = $('mcWindow'); win.innerHTML = ''; win.style.display = scr.window ? 'block' : 'none';
+  if (scr.window) {
+    const t = document.createElement('div'); mcText(t, scr.window.title || (en ? 'Window' : '画面')); win.appendChild(t);
+    const g = document.createElement('div'); g.className = 'slots';
+    const n = Math.max(9, Math.ceil(((scr.window.slots || []).reduce((m, v) => Math.max(m, v.slot), 0) + 1) / 9) * 9);
+    for (let k = 0; k < n; k++) { const c = document.createElement('div'); const it = (scr.window.slots || []).find((v) => v.slot === k); c.textContent = it ? `${k}: ${(it.label || it.name).replace('minecraft:', '')}${it.count > 1 ? ' x' + it.count : ''}` : String(k); g.appendChild(c); }
+    win.appendChild(g);
+  }
   $('mcHud').textContent = scr.online ? `HP ${scr.health ?? '-'}  FOOD ${scr.food ?? '-'}  ${scr.gamemode || ''}${scr.held ? '  HAND ' + scr.held : ''}` : '-';
 }
 ['scrStep', 'scrPlayer', 'scrTab'].forEach((id) => { $(id).addEventListener('input', drawScreen); $(id).addEventListener('change', drawScreen); });
@@ -321,7 +342,7 @@ $('btnSetup').onclick = (e) => busy(e.target, async () => {
 });
 $('btnStart').onclick = (e) => busy(e.target, async () => { await call('/api/start', { version: $('ver').value }); $('srvStatus').textContent = '起動しました'; });
 $('btnStop').onclick = (e) => busy(e.target, async () => { await call('/api/stop'); $('srvStatus').textContent = '止めました'; });
-$('btnPlayers').onclick = (e) => busy(e.target, async () => { const j = await call('/api/players', { count: +$('count').value, names: $('names').value.trim() || null }); $('players').textContent = '入った: ' + j.spawned.join(', '); });
+$('btnPlayers').onclick = (e) => busy(e.target, async () => { const j = await call('/api/players', { count: +$('count').value, names: $('names').value.trim() || null, op: $('opPlayers').checked }); $('players').textContent = '入った: ' + j.spawned.join(', '); });
 $('btnLint').onclick = (e) => busy(e.target, async () => {
   const j = await call('/api/lint', { pack_dir: $('pack').value, version: $('ver').value });
   $('packStatus').textContent = j.findings.length ? j.findings.map((f) => `[${f.level}] ${f.file}:${f.line} ${f.message}`).join('\n') : 'この版で問題は見つかりませんでした';

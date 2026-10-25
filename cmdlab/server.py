@@ -58,6 +58,12 @@ class TestServer:
         shutil.copytree(pack_dir, dest, ignore=shutil.ignore_patterns(".git"))
         return dest
 
+    def install_pack_from(self, writer, name: str) -> Path:
+        """Write a generated data pack straight into this server's world (used for projects)."""
+        dest = self.dir / "world" / "datapacks" / name
+        writer(dest)
+        return dest
+
     # --- run ---------------------------------------------------------------
     def reset_world(self) -> None:
         """Start each test from a clean world, keeping the installed data packs."""
@@ -75,11 +81,37 @@ class TestServer:
             world.mkdir()
             shutil.move(str(keep), str(packs))
 
-    def start(self, memory: str = "2G", timeout: float = 240, fresh: bool = True) -> None:
+    def use_world(self, world_dir: Path) -> None:
+        """Test on a copy of a real world (your map with its command blocks); the original is never touched."""
+        world_dir = Path(world_dir)
+        if not (world_dir / "level.dat").exists():
+            raise SystemExit(f"{world_dir} is not a Minecraft world folder (no level.dat)")
+        dest = self.dir / "world"
+        keep = None
+        if (dest / "datapacks").exists():
+            keep = self.dir / "_datapacks_keep"
+            if keep.exists():
+                shutil.rmtree(keep)
+            shutil.move(str(dest / "datapacks"), str(keep))
+        if dest.exists():
+            shutil.rmtree(dest)
+        shutil.copytree(world_dir, dest, ignore=shutil.ignore_patterns("session.lock"))
+        if keep:
+            (dest / "datapacks").mkdir(exist_ok=True)
+            for p in keep.iterdir():
+                target = dest / "datapacks" / p.name
+                if target.exists():
+                    shutil.rmtree(target) if target.is_dir() else target.unlink()
+                shutil.move(str(p), str(target))
+            shutil.rmtree(keep)
+
+    def start(self, memory: str = "2G", timeout: float = 240, fresh: bool = True, world: Path | None = None) -> None:
         jar = self.dir / f"server-{self.version}.jar"
         if not jar.exists():
             raise SystemExit(f"run setup for {self.version} first")
-        if fresh:
+        if world:
+            self.use_world(world)
+        elif fresh:
             self.reset_world()
         if not self.password:
             for line in (self.dir / "server.properties").read_text(encoding="utf-8").splitlines():

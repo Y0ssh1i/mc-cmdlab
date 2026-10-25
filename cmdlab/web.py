@@ -12,7 +12,7 @@ from dataclasses import asdict
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-from . import ai, explain, lint, runner, versions
+from . import ai, explain, lint, project, runner, versions
 from .bots import Bots, parse_names
 from .server import TestServer
 
@@ -20,6 +20,7 @@ STATIC = Path(__file__).resolve().parent / "static"
 WORK_LAST = Path.home() / ".mc-cmdlab" / "last_run.json"
 EXAMPLES = Path(__file__).resolve().parent.parent / "examples"
 RUNS = Path.home() / ".mc-cmdlab" / "runs"  # saved results per example
+PROJECTS = Path.home() / ".mc-cmdlab" / "projects"  # projects saved from the editor page
 STATE: dict = {"server": None, "bots": None, "last": None, "lock": threading.Lock()}
 
 
@@ -32,6 +33,56 @@ def _server(version: str | None = None) -> TestServer:
 
 
 def api(path: str, body: dict) -> dict:
+    # --- projects: several command sets (modules) and scenarios that combine them -------------------
+    if path == "/api/projects":
+        out = []
+        for folder, where in ((EXAMPLES / "projects", "example"), (PROJECTS, "saved")):
+            for f in sorted(folder.glob("*.json")) if folder.exists() else []:
+                d = json.loads(f.read_text(encoding="utf-8"))
+                out.append({"name": f.stem, "where": where, "title": d.get("title") or f.stem, "version": d.get("version"),
+                            "modules": len(d.get("modules", [])), "scenarios": len(d.get("scenarios", []))})
+        return out
+    if path == "/api/project/load":
+        name = Path(str(body.get("name", ""))).name
+        for folder in (PROJECTS, EXAMPLES / "projects"):
+            f = folder / f"{name}.json"
+            if f.exists():
+                return json.loads(f.read_text(encoding="utf-8"))
+        raise SystemExit(f"no project named {name}")
+    if path == "/api/project/save":
+        name = Path(str(body.get("name", "") or "untitled")).name
+        PROJECTS.mkdir(parents=True, exist_ok=True)
+        (PROJECTS / f"{name}.json").write_text(json.dumps(body["project"], ensure_ascii=False, indent=1), encoding="utf-8")
+        return {"ok": True, "saved": str(PROJECTS / f"{name}.json")}
+    if path == "/api/project/check":
+        p = body["project"]
+        v = body.get("version") or p.get("version", "1.20.1")
+        return {"problems": project.check(p), "lint": [asdict(f) for f in project.lint_project(p, v)]}
+    if path == "/api/project/expand":
+        return {"steps": project.scenario_steps(body["project"], body.get("scenario"), body.get("module"))}
+    if path == "/api/project/export":
+        p = body["project"]
+        v = body.get("version") or p.get("version", "1.20.1")
+        out = Path(body.get("out") or (Path.home() / ".mc-cmdlab" / "exports" / (p.get("namespace", "game") + "_" + v)))
+        project.write_pack(p, out, v)
+        return {"ok": True, "out": str(out)}
+    if path == "/api/project/run":
+        s = _server()
+        p = body["project"]
+        probs = project.check(p)
+        if probs:
+            raise SystemExit("; ".join(probs))
+        dest = s.install_pack_from(lambda d: project.write_pack(p, d, s.version), "cmdlab_project")
+        mark = len(s.log)
+        with s.rcon() as r:
+            r.command("reload")
+        time.sleep(1.5)
+        load_errors = explain.function_errors(s.log[mark:])
+        steps = project.scenario_steps(p, body.get("scenario"), body.get("module"))
+        res = runner.run_steps(s, STATE["bots"], steps, s.version, project.parse_only(body.get("only")))
+        STATE["last"] = {"script": {"steps": steps}, "results": [asdict(x) for x in res]}
+        WORK_LAST.write_text(json.dumps(STATE["last"]["results"], ensure_ascii=False), encoding="utf-8")
+        return {"results": STATE["last"]["results"], "load_errors": load_errors, "steps": steps, "pack": str(dest)}
     if path == "/api/examples":
         out = []
         for f in sorted(EXAMPLES.glob("*.json")):
@@ -80,7 +131,12 @@ def api(path: str, body: dict) -> dict:
         names = parse_names(body.get("names"), int(body.get("count", 3)))
         b = Bots(s.port, versions.notes(s.version)["mineflayer_version"], names)
         STATE["bots"] = b
-        return {"ok": True, "spawned": b.wait_spawned()}
+        spawned = b.wait_spawned()
+        if body.get("op"):  # let test players run admin commands themselves (local test server only)
+            with s.rcon() as r:
+                for n in spawned:
+                    r.command(f"op {n}")
+        return {"ok": True, "spawned": spawned, "op": bool(body.get("op"))}
     if path == "/api/lint":
         findings = lint.lint_pack(Path(body["pack_dir"]), body["version"]) if body.get("pack_dir") else \
             lint.lint_lines(body.get("lines", []), body["version"])
@@ -145,6 +201,8 @@ class Handler(BaseHTTPRequestHandler):
         self.path = self.path.split("?", 1)[0]
         if self.path in ("/", "/index.html"):
             return self._send(200, (STATIC / "index.html").read_bytes(), "text/html; charset=utf-8")
+        if self.path in ("/editor", "/editor.html") and (STATIC / "editor.html").exists():
+            return self._send(200, (STATIC / "editor.html").read_bytes(), "text/html; charset=utf-8")
         if self.path.startswith("/api/"):
             return self._api({})
         self._send(404, b"not found", "text/plain")

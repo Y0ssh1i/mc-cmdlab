@@ -1,0 +1,200 @@
+{
+ "version": "1.20.1",
+ "title": "アイテム・音・ボタン・ショップ / Items, sounds, buttons, shop",
+ "player_names": [
+  "Alice",
+  "Bob",
+  "Carol"
+ ],
+ "steps": [
+  {
+   "run": "gamerule sendCommandFeedback true"
+  },
+  {
+   "function": [
+    "gamemode survival @a",
+    "difficulty easy",
+    "clear @a",
+    "effect clear @a",
+    "tp Alice 0 -60 0 0 0",
+    "tp Bob 0 -60 -4",
+    "tp Carol -4 -60 0",
+    "give Alice potion{Potion:\"minecraft:swiftness\"} 1",
+    "give Alice golden_apple 1",
+    "give Alice stone 4",
+    "give Bob splash_potion{Potion:\"minecraft:slowness\"} 1",
+    "setblock 0 -60 3 chest{CustomName:'{\"text\":\"ショップ\"}',Items:[{Slot:0b,id:\"minecraft:diamond\",Count:1b},{Slot:1b,id:\"minecraft:iron_sword\",Count:1b}]}",
+    "setblock 2 -60 1 stone",
+    "setblock 2 -59 1 stone_button[face=floor]",
+    "scoreboard objectives add hp health {\"text\":\"♥\",\"color\":\"red\"}",
+    "scoreboard objectives setdisplay belowName hp",
+    "scoreboard objectives add pressed dummy"
+   ]
+  },
+  {
+   "function": [
+    "execute if block 2 -59 1 stone_button[powered=true] run scoreboard players add #btn pressed 1",
+    "execute if block 2 -59 1 stone_button[powered=true] run tellraw @a {\"text\":\"ボタンが押された\",\"color\":\"yellow\"}"
+   ]
+  },
+  {
+   "blocks": [
+    {
+     "type": "repeat",
+     "cmd": "function cmdlab:step3",
+     "auto": true
+    }
+   ],
+   "origin": [
+    0,
+    -58,
+    14
+   ],
+   "wait": 0.5,
+   "cleanup": false
+  },
+  {
+   "player": "Alice",
+   "do": "use_block",
+   "x": 2,
+   "y": -59,
+   "z": 1,
+   "wait": 1,
+   "expect": {
+    "seen_by": "Bob",
+    "seen_contains": "ボタン"
+   }
+  },
+  {
+   "player": "Alice",
+   "do": "use_block",
+   "x": 0,
+   "y": -60,
+   "z": 3,
+   "wait": 1
+  },
+  {
+   "player": "Alice",
+   "do": "click_slot",
+   "slot": 0,
+   "mode": 1,
+   "wait": 0.5
+  },
+  {
+   "player": "Alice",
+   "do": "close_window"
+  },
+  {
+   "run": "execute if entity @a[name=Alice,nbt={Inventory:[{id:\"minecraft:diamond\"}]}]",
+   "expect": {
+    "output_contains": "Test passed"
+   }
+  },
+  {
+   "player": "Alice",
+   "do": "select",
+   "slot": 0
+  },
+  {
+   "player": "Alice",
+   "do": "use",
+   "seconds": 2.2,
+   "wait": 0.5
+  },
+  {
+   "run": "execute if entity @a[name=Alice,nbt={ActiveEffects:[{Id:1}]}]",
+   "expect": {
+    "output_contains": "Test passed"
+   }
+  },
+  {
+   "player": "Alice",
+   "do": "select",
+   "slot": 1
+  },
+  {
+   "player": "Alice",
+   "do": "use",
+   "seconds": 2.0,
+   "wait": 0.5
+  },
+  {
+   "run": "execute if entity @a[name=Alice,nbt={ActiveEffects:[{Id:10}]}]",
+   "expect": {
+    "output_contains": "Test passed"
+   }
+  },
+  {
+   "player": "Bob",
+   "do": "look_at",
+   "target": "Alice"
+  },
+  {
+   "player": "Bob",
+   "do": "use",
+   "seconds": 0.2,
+   "wait": 1.5
+  },
+  {
+   "run": "execute if entity @a[name=Alice,nbt={ActiveEffects:[{Id:2}]}]",
+   "expect": {
+    "output_contains": "Test passed"
+   }
+  },
+  {
+   "run": "playsound minecraft:entity.experience_orb.pickup master @a ~ ~ ~ 1 1",
+   "wait": 0.5,
+   "expect": {
+    "heard": "experience_orb",
+    "heard_by": "Carol"
+   }
+  },
+  {
+   "player": "Alice",
+   "do": "select",
+   "slot": 2
+  },
+  {
+   "player": "Alice",
+   "do": "place",
+   "x": 1,
+   "y": -60,
+   "z": -1,
+   "item": "stone",
+   "wait": 0.5
+  },
+  {
+   "run": "execute if block 1 -60 -1 stone",
+   "expect": {
+    "output_contains": "Test passed"
+   }
+  },
+  {
+   "player": "Alice",
+   "do": "dig",
+   "x": 1,
+   "y": -60,
+   "z": -1,
+   "wait": 0.5
+  },
+  {
+   "run": "execute if block 1 -60 -1 air",
+   "expect": {
+    "output_contains": "Test passed"
+   }
+  },
+  {
+   "run": "summon villager -2 -60 2 {NoAI:1b,VillagerData:{profession:\"minecraft:armorer\",level:2,type:\"minecraft:plains\"},Offers:{Recipes:[{buy:{id:\"minecraft:emerald\",Count:1b},sell:{id:\"minecraft:iron_helmet\",Count:1b},maxUses:9}]}}"
+  },
+  {
+   "player": "Carol",
+   "do": "use_entity",
+   "type": "villager",
+   "wait": 1
+  },
+  {
+   "player": "Carol",
+   "do": "close_window"
+  }
+ ]
+}

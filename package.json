@@ -3,6 +3,7 @@
   "private": true,
   "description": "Fake players for mc-cmdlab (offline, local test servers only)",
   "dependencies": {
-    "mineflayer": "^4.25.0"
+    "mineflayer": "^4.25.0",
+    "mineflayer-pathfinder": "^2.4.5"
   }
 }

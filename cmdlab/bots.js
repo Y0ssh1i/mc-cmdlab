@@ -3,6 +3,9 @@
 // stdout: one JSON line per event. stdin: "state" -> prints a screen snapshot for every player;
 // "do {json}" -> one player acts (chat, command, move, goto, look_at, attack, jump, sneak, select, use, respawn); "quit".
 const mineflayer = require('mineflayer');
+const { Vec3 } = require('vec3');
+let pf = null;
+try { pf = require('mineflayer-pathfinder'); } catch (e) { pf = null; }  // optional: real path finding for goto
 
 const [host, port, version, namesArg] = process.argv.slice(2);
 const names = (namesArg || 'Tester1,Tester2,Tester3').split(',').map((s) => s.trim()).filter(Boolean);
@@ -54,6 +57,10 @@ function snapshot(name) {
   const tab = Object.values(bot.players || {}).map((p) => ({
     name: p.username, display: motd(p.displayName), ping: p.ping, gamemode: p.gamemode,
   }));
+  const boards = bot.scoreboards ? Object.values(bot.scoreboards) : [];
+  const below = boards.find((o) => o.position === 2);
+  const belowName = below ? { title: motd(below.displayName || below.title || below.name), scores: (below.items || []).map((i) => ({ name: i.name, score: i.value })) } : null;
+  const teamSidebars = boards.filter((o) => o.position >= 3 && o.position <= 18).map((o) => ({ position: o.position, title: motd(o.displayName || o.title || o.name) }));
   const teams = Object.values(bot.teams || {}).map((t) => ({ name: t.team, prefix: motd(t.prefix), suffix: motd(t.suffix), color: t.color, members: [...(t.membersMap ? Object.keys(t.membersMap) : t.members || [])] }));
   return {
     name, online: true,
@@ -61,7 +68,8 @@ function snapshot(name) {
     position: bot.entity.position && { x: +bot.entity.position.x.toFixed(1), y: +bot.entity.position.y.toFixed(1), z: +bot.entity.position.z.toFixed(1) },
     title: s.title, subtitle: s.subtitle, actionbar: s.actionbar,
     bossbars: Object.values(s.bossbars),
-    sidebar, tab, teams,
+    effects: Object.values(bot.entity.effects || {}).map((e) => ({ name: (bot.registry.effects && bot.registry.effects[e.id] ? bot.registry.effects[e.id].name : 'effect#' + e.id), level: (e.amplifier || 0) + 1, seconds: Math.round((e.duration || 0) / 20) })),
+    sidebar, tab, teams, belowName, teamSidebars, sounds: s.sounds.slice(-10), window: s.window,
     tabHeader: motd(bot.tablist && bot.tablist.header), tabFooter: motd(bot.tablist && bot.tablist.footer),
     chat: s.chat.slice(-10),
     held: bot.heldItem ? bot.heldItem.name : null,
@@ -72,9 +80,20 @@ function snapshot(name) {
 function join(username, attempt) {
     const bot = mineflayer.createBot({ host, port: parseInt(port, 10), username, version, auth: 'offline' });
     bots[username] = bot;
-    screen[username] = { title: '', subtitle: '', actionbar: '', bossbars: {}, chat: [] };
+    screen[username] = { title: '', subtitle: '', actionbar: '', bossbars: {}, chat: [], sounds: [], window: null };
     const s = screen[username];
-    bot.once('spawn', () => log({ event: 'spawn', username }));
+    bot.once('spawn', () => {
+      if (pf) { try { bot.loadPlugin(pf.pathfinder); const m = new pf.Movements(bot); m.canDig = false; bot.pathfinder.setMovements(m); } catch (e) { /* walk straight instead */ } }
+      log({ event: 'spawn', username });
+    });
+    const snd = (name) => { s.sounds.push(String(name)); if (s.sounds.length > 15) s.sounds.shift(); log({ event: 'sound', username, name: String(name) }); };
+    bot.on('soundEffectHeard', (name) => snd(name));
+    bot.on('hardcodedSoundEffectHeard', (id) => snd('sound#' + id));
+    bot.on('windowOpen', (w) => {
+      s.window = { title: txt(w.title), slots: w.slots.slice(0, w.inventoryStart || w.slots.length).map((it, i) => it ? { slot: i, name: it.name, count: it.count, label: it.customName ? txt(it.customName) : null } : null).filter(Boolean) };
+      log({ event: 'window', username, title: s.window.title, items: s.window.slots.length });
+    });
+    bot.on('windowClose', () => { s.window = null; });
     bot.on('messagestr', (msg, position) => {
       if (position === 'game_info') { s.actionbar = msg; log({ event: 'actionbar', username, msg }); return; }
       s.chat.push(msg); log({ event: 'chat', username, msg });
@@ -138,7 +157,17 @@ async function act(a) {
         bot.setControlState(dir, true); await sleep(ms); bot.setControlState(dir, false);
         bot.setControlState('sprint', false); break;
       }
-      case 'goto': {                                                 // walk straight to x z (no path finding)
+      case 'goto': {
+        if (pf && bot.pathfinder) {                                  // real path finding (around walls, up steps)
+          const y = a.y != null ? a.y : bot.entity.position.y;
+          const go = bot.pathfinder.goto(new pf.goals.GoalNear(a.x, y, a.z, a.range || 1));
+          const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('did not arrive in time')), ms + 20000));
+          try { await Promise.race([go, timeout]); } finally { bot.pathfinder.setGoal(null); bot.clearControlStates(); }
+          break;
+        }
+      }
+      // falls through when there is no path finder: walk straight
+      case 'walk': {                                                 // walk straight to x z (no path finding)
         const t0 = Date.now();
         while (Date.now() - t0 < ms + 10000) {
           const dx = a.x - bot.entity.position.x, dz = a.z - bot.entity.position.z;
@@ -176,6 +205,40 @@ async function act(a) {
         if (hits < (a.times || 1) && !killed) return done(false, { error: `only ${hits} hit(s) landed`, hits });
         break;
       }
+      case 'use_block': {                                            // right click a button, lever, sign, door, chest ...
+        const b = bot.blockAt(new Vec3(a.x, a.y, a.z));
+        if (!b || b.name === 'air') return done(false, { error: `no block at ${a.x} ${a.y} ${a.z}` });
+        await bot.lookAt(b.position.offset(0.5, 0.5, 0.5), true);
+        await bot.activateBlock(b); await sleep(300);
+        return done(true, { block: b.name });
+      }
+      case 'use_entity': {                                           // right click a villager / mob / player / armor stand
+        const e = a.target && bot.players[a.target] ? bot.players[a.target].entity
+          : bot.nearestEntity((x) => x !== bot.entity && (!a.type || x.name === a.type) && (!a.name || (x.displayName || x.username || '') === a.name || (x.getCustomName && txt(x.getCustomName()) === a.name)));
+        if (!e) return done(false, { error: `no ${a.target || a.type || a.name || 'entity'} nearby` });
+        await bot.lookAt(e.position.offset(0, e.height * 0.8, 0), true);
+        await bot.activateEntity(e); await sleep(300);
+        return done(true, { entity: e.name || e.username });
+      }
+      case 'dig': {
+        const b = bot.blockAt(new Vec3(a.x, a.y, a.z));
+        if (!b || b.name === 'air') return done(false, { error: `no block at ${a.x} ${a.y} ${a.z}` });
+        if (!bot.canDigBlock(b)) return done(false, { error: `${b.name} cannot be broken from here (too far, or adventure mode)` });
+        await bot.dig(b); return done(true, { block: b.name });
+      }
+      case 'place': {                                                // place the held block (or "item") on top of x y-1 z
+        if (a.item) { const it = bot.inventory.items().find((i) => i.name === a.item); if (!it) return done(false, { error: `no ${a.item} in the inventory` }); await bot.equip(it, 'hand'); }
+        const ref = bot.blockAt(new Vec3(a.x, a.y - 1, a.z));
+        if (!ref || ref.name === 'air') return done(false, { error: `nothing to place against under ${a.x} ${a.y} ${a.z}` });
+        await bot.placeBlock(ref, new Vec3(0, 1, 0)); return done(true, { placed: bot.heldItem ? bot.heldItem.name : a.item });
+      }
+      case 'click_slot': {                                           // click a slot in the open chest / menu (shops, kit pickers)
+        if (!bot.currentWindow) return done(false, { error: 'no window is open' });
+        await bot.clickWindow(a.slot, a.button || 0, a.mode || 0); await sleep(300);
+        return done(true, { window: txt(bot.currentWindow && bot.currentWindow.title) });
+      }
+      case 'close_window': if (bot.currentWindow) bot.closeWindow(bot.currentWindow); break;
+      case 'drop': if (bot.heldItem) await bot.tossStack(bot.heldItem); break;
       case 'jump': bot.setControlState('jump', true); await sleep(400); bot.setControlState('jump', false); break;
       case 'sneak': bot.setControlState('sneak', a.on !== false); break;
       case 'select': bot.setQuickBarSlot(Math.max(0, Math.min(8, a.slot || 0))); break;

@@ -6,7 +6,7 @@ import json
 import sys
 from pathlib import Path
 
-from . import ai, lint, runner, versions
+from . import ai, lint, project, runner, versions
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -28,6 +28,14 @@ def main(argv: list[str] | None = None) -> int:
     r.add_argument("--players", type=int)
     r.add_argument("--pack", action="append", default=[])
     r.add_argument("--json", action="store_true")
+    r.add_argument("--scenario", help="project: which scenario to run (default: the first)")
+    r.add_argument("--module", help="project: run only this module")
+    r.add_argument("--only", help="run only these step numbers, e.g. 3,5-7")
+    r.add_argument("--world", help="test on a copy of this world folder (your map with its command blocks)")
+    x = sub.add_parser("export", help="write a project's command sets as a real data pack")
+    x.add_argument("project")
+    x.add_argument("--version")
+    x.add_argument("--out", required=True)
     g = sub.add_parser("ai", help="ask an AI (Claude, OpenAI, Gemini, OpenRouter, Ollama, ...) to write a script")
     g.add_argument("request")
     g.add_argument("--version", default="1.20.1")
@@ -71,13 +79,36 @@ def main(argv: list[str] | None = None) -> int:
         srv = TestServer(version)
         for p in a.pack + script.get("datapacks", []):
             srv.install_pack(Path(p))
-        srv.start()
+        is_proj = project.is_project(script)
+        if is_proj:
+            probs = project.check(script)
+            if probs:
+                print(chr(10).join(probs), file=sys.stderr)
+                return 2
+            srv.start(world=Path(a.world) if a.world else (Path(script["world"]) if script.get("world") else None))
+            srv.install_pack_from(lambda d: project.write_pack(script, d, version), "cmdlab_project")
+            mark = len(srv.log)
+            with srv.rcon() as r0:
+                r0.command("reload")
+            import time as _t
+            _t.sleep(1.5)
+            from . import explain as _ex
+            for e in _ex.function_errors(srv.log[mark:]):
+                print("load error:", e, file=sys.stderr)
+            steps = project.scenario_steps(script, a.scenario, a.module)
+        else:
+            srv.start(world=Path(a.world) if a.world else (Path(script["world"]) if script.get("world") else None))
+            steps = script["steps"]
         names = parse_names(script.get("player_names"), players)
         bots = Bots(srv.port, versions.notes(version)["mineflayer_version"], names) if names else None
         try:
             if bots:
                 print("players:", ", ".join(bots.wait_spawned()), file=sys.stderr)
-            res = runner.run_steps(srv, bots, script["steps"], version)
+                if script.get("op_players"):  # let test players run admin commands themselves (local test server only)
+                    with srv.rcon() as r:
+                        for n in names:
+                            r.command(f"op {n}")
+            res = runner.run_steps(srv, bots, steps, version, project.parse_only(a.only))
             last = Path.home() / ".mc-cmdlab" / "last_run.json"
             last.write_text(runner.to_json(res), encoding="utf-8")  # the web UI can show it: /?result=1
             runs = Path.home() / ".mc-cmdlab" / "runs"
@@ -89,6 +120,12 @@ def main(argv: list[str] | None = None) -> int:
             if bots:
                 bots.stop()
             srv.stop()
+    if a.cmd == "export":
+        script = runner.load_script(Path(a.project))
+        v = a.version or script.get("version", "1.20.1")
+        out = project.write_pack(script, Path(a.out), v)
+        print(f"wrote data pack {out} for {v}")
+        return 0
     if a.cmd == "ai":
         steps = ai.generate(a.request, a.version, a.players, provider=a.provider, model=a.model, base_url=a.base_url)
         Path(a.out).write_text(json.dumps({"version": a.version, "players": a.players, "steps": steps},
