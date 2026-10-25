@@ -1,0 +1,8 @@
+{
+  "name": "mc-cmdlab-bots",
+  "private": true,
+  "description": "Fake players for mc-cmdlab (offline, local test servers only)",
+  "dependencies": {
+    "mineflayer": "^4.25.0"
+  }
+}

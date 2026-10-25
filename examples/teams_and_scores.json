@@ -1,0 +1,66 @@
+{
+  "version": "1.20.1",
+  "players": 3,
+  "steps": [
+    {
+      "run": "scoreboard objectives add points dummy"
+    },
+    {
+      "run": "team add red"
+    },
+    {
+      "run": "team add blue"
+    },
+    {
+      "run": "team join red Tester1"
+    },
+    {
+      "run": "team join blue Tester2"
+    },
+    {
+      "run": "title @a title {\"text\":\"Start\"}",
+      "wait": 1,
+      "expect": {
+        "seen_by": "Tester1",
+        "seen_contains": "Start"
+      }
+    },
+    {
+      "run": "scoreboard players add @s points 1",
+      "as": "Tester1"
+    },
+    {
+      "run": "scoreboard players get Tester1 points",
+      "expect": {
+        "output_regex": "has 1 "
+      }
+    },
+    {
+      "blocks": [
+        {
+          "type": "impulse",
+          "cmd": "scoreboard players add Tester2 points 5"
+        },
+        {
+          "type": "chain",
+          "cmd": "execute if score Tester2 points matches 5 run say blue got five"
+        },
+        {
+          "type": "chain",
+          "cmd": "say conditional ok",
+          "conditional": true
+        }
+      ],
+      "origin": [
+        0,
+        -59,
+        0
+      ],
+      "wait": 1,
+      "expect": {
+        "seen_by": "Tester3",
+        "seen_contains": "blue got five"
+      }
+    }
+  ]
+}

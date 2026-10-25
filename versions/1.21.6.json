@@ -1,0 +1,18 @@
+{
+  "version": "1.21.6",
+  "pack_format": 80,
+  "java": 21,
+  "function_dir": "function",
+  "folder_names": {
+    "functions": "function",
+    "tags_functions": "tags/function",
+    "advancements": "advancement",
+    "loot_tables": "loot_table",
+    "predicates": "predicate",
+    "recipes": "recipe",
+    "item_modifiers": "item_modifier"
+  },
+  "mineflayer_version": "1.21.6",
+  "not_available": [],
+  "notes": "Singular data pack folder names (function/, advancement/ ...). Item arguments use components: item[component=...]. pack_format is verified against the server jar after setup."
+}

@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>mc-cmdlab</title>
+<style>
+:root { --bg:#f7f7f5; --card:#fff; --ink:#1d1d1f; --sub:#6b6b70; --line:#e3e3e0; --acc:#2f6f4e; --ok:#2f7d4a; --ng:#b3261e; --code:#f1f1ee; }
+@media (prefers-color-scheme: dark) { :root { --bg:#16171a; --card:#1f2024; --ink:#ececec; --sub:#a0a0a6; --line:#2e2f34; --acc:#6fc49a; --ok:#6fc49a; --ng:#ff8a80; --code:#26272c; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.6 system-ui, "Hiragino Sans", "Yu Gothic UI", sans-serif; }
+header { padding:20px 24px 8px; } h1 { margin:0; font-size:22px; } header p { margin:4px 0 0; color:var(--sub); }
+main { display:grid; grid-template-columns: minmax(320px, 1fr) minmax(320px, 1.2fr); gap:16px; padding:16px 24px 32px; }
+@media (max-width: 900px) { main { grid-template-columns: 1fr; padding:12px 16px; } }
+section { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; }
+h2 { margin:0 0 10px; font-size:16px; } h2 span { color:var(--acc); margin-right:6px; }
+label { display:block; color:var(--sub); font-size:13px; margin:8px 0 4px; }
+input, select, textarea { width:100%; padding:8px 10px; border:1px solid var(--line); border-radius:8px; background:var(--bg); color:var(--ink); font:inherit; }
+textarea { font:13px/1.5 ui-monospace, Consolas, monospace; min-height:180px; }
+.row { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; align-items:center; }
+button { padding:8px 14px; border-radius:8px; border:1px solid var(--acc); background:var(--acc); color:#fff; font:inherit; cursor:pointer; }
+button.ghost { background:transparent; color:var(--acc); }
+button:disabled { opacity:.5; cursor:wait; }
+.status { font-size:13px; color:var(--sub); margin-top:8px; white-space:pre-wrap; }
+.pill { display:inline-block; padding:2px 8px; border-radius:99px; font-size:12px; border:1px solid var(--line); }
+.pill.on { border-color:var(--ok); color:var(--ok); }
+td:nth-child(2), th:nth-child(2) { white-space:nowrap; }
+table { width:100%; border-collapse:collapse; font-size:13px; } th, td { text-align:left; padding:6px 8px; border-bottom:1px solid var(--line); vertical-align:top; }
+td code { background:var(--code); padding:1px 4px; border-radius:4px; word-break:break-all; }
+.ok { color:var(--ok); font-weight:600; } .ng { color:var(--ng); font-weight:600; }
+pre.log { background:var(--code); border-radius:8px; padding:8px; max-height:200px; overflow:auto; font-size:12px; white-space:pre-wrap; }
+.wide { grid-column: 1 / -1; }
+.story { margin:0 0 12px; padding-left:22px; font-size:14px; } .story li { margin:4px 0; } .story li.ng { color:var(--ng); } .where { color:var(--ng); font-weight:600; }
+.check { display:flex; gap:8px; align-items:flex-start; color:var(--ink); font-size:13px; } .check input { width:auto; margin-top:4px; }
+</style>
+</head>
+<body>
+<header>
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+    <h1>mc-cmdlab</h1>
+    <label class="check" style="margin:0"><span data-i="lang">言語</span>
+      <select id="lang" style="width:auto"><option value="ja">日本語</option><option value="en">English</option></select></label>
+  </div>
+  <p data-i="tagline">マイクラ(Java 版)のコマンドを、人を集めずに、コマンドブロックを置かずに試す環境。手元だけで動きます。</p>
+</header>
+<main>
+  <section>
+    <h2><span>1</span>テスト用サーバー</h2>
+    <label for="ver">マイクラの版</label>
+    <select id="ver"></select>
+    <label class="check"><input type="checkbox" id="eula"> <span>Minecraft の利用規約(<a href="https://aka.ms/MinecraftEULA" target="_blank" rel="noopener">EULA</a>)に同意します。サーバーの本体は公式から取ります。</span></label>
+    <div class="row">
+      <button id="btnSetup">準備する</button>
+      <button id="btnStart">起動する</button>
+      <button class="ghost" id="btnStop">止める</button>
+      <span id="srvPill" class="pill">停止中</span>
+    </div>
+    <div class="status" id="srvStatus"></div>
+  </section>
+
+  <section>
+    <h2><span>2</span>テスト用プレイヤー</h2>
+    <label for="count">人数(Tester1, Tester2, … の名前で入ります)</label>
+    <input id="count" type="number" min="1" max="40" value="3">
+    <div class="row"><button id="btnPlayers">入れる</button><span id="players" class="status"></span></div>
+
+    <h2 style="margin-top:18px"><span>3</span>データパック(任意)</h2>
+    <label for="pack">データパックのフォルダ(pack.mcmeta のある場所)</label>
+    <input id="pack" placeholder="C:\path\to\your-datapack">
+    <div class="row"><button class="ghost" id="btnLint">版に合うか点検</button><button id="btnPack">サーバーに入れる</button></div>
+    <div class="status" id="packStatus"></div>
+  </section>
+
+  <section>
+    <h2><span>4</span>AI にコマンドを作らせる</h2>
+    <label for="req">作りたい企画とテストしたいこと</label>
+    <textarea id="req" style="min-height:110px" placeholder="例: 赤チームと青チームに分けて、タイトルで開始を知らせ、得点のスコアボードを作る。"></textarea>
+    <div class="row"><button id="btnGen">作る</button><button class="ghost" id="btnFix">失敗を直させる</button></div>
+    <div class="status">Claude を使います(手元の ANTHROPIC_API_KEY)。作った台本は右の欄に入ります。</div>
+  </section>
+
+  <section>
+    <h2><span>5</span>台本(1回きりのコマンド・コマンドブロック)</h2>
+    <textarea id="script"></textarea>
+    <div class="row"><button id="btnRun">流す</button><button class="ghost" id="btnExample">例を入れる</button></div>
+  </section>
+
+  <section class="wide">
+    <h2><span>6</span><b data-i="h_result">結果</b></h2>
+    <div id="summary" class="status"></div>
+    <h2 style="margin-top:12px" data-i="h_story">順番に何が起きたか</h2>
+    <ol id="story" class="story"></ol>
+    <table id="results"><thead><tr><th>#</th><th data-i="c_res">結果</th><th data-i="c_what">していること</th><th data-i="c_cmd">コマンド</th><th data-i="c_reply">サーバーの返事・エラーの場所</th><th data-i="c_seen">プレイヤーが見たもの</th></tr></thead><tbody></tbody></table>
+    <h2 style="margin-top:16px">サーバーのログ</h2>
+    <pre class="log" id="log"></pre>
+  </section>
+</main>
+<script>
+const $ = (id) => document.getElementById(id);
+async function call(path, body) {
+  const r = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) });
+  const j = await r.json();
+  if (!r.ok) throw new Error(j.error || r.statusText);
+  return j;
+}
+async function busy(btn, fn) {
+  btn.disabled = true;
+  try { await fn(); } catch (e) { $('srvStatus').textContent = 'エラー: ' + e.message; } finally { btn.disabled = false; refresh(); }
+}
+const EXAMPLE = {
+  steps: [
+    { run: 'scoreboard objectives add points dummy "得点"' },
+    { run: 'team add red' }, { run: 'team add blue' },
+    { run: 'team join red Tester1' }, { run: 'team join blue Tester2' },
+    { run: 'title @a title {"text":"ゲーム開始"}', wait: 1, expect: { seen_by: 'Tester1', seen_contains: 'ゲーム開始' } },
+    { run: 'scoreboard players add @s points 1', as: 'Tester1' },
+    { run: 'scoreboard players get Tester1 points', expect: { output_regex: 'has 1 ' } },
+    { blocks: [
+        { type: 'impulse', cmd: 'scoreboard players add Tester2 points 5' },
+        { type: 'chain', cmd: 'execute if score Tester2 points matches 5 run say 青に5点' },
+        { type: 'chain', cmd: 'say 条件付きの確認', conditional: true }
+      ], origin: [0, -59, 0], wait: 1 }
+  ]
+};
+const I18N = {
+  ja: { lang:'言語', tagline:'マイクラ(Java 版)のコマンドを、人を集めずに、コマンドブロックを置かずに試す環境。手元だけで動きます。',
+        h_result:'結果', h_story:'順番に何が起きたか', c_res:'結果', c_what:'していること', c_cmd:'コマンド', c_reply:'サーバーの返事・エラーの場所', c_seen:'プレイヤーが見たもの',
+        ok:'OK', ng:'失敗', passed:(a,b)=>`${a} / ${b} 段が成功`, saw:'見えたもの' },
+  en: { lang:'Language', tagline:'Test Minecraft (Java) commands without gathering people or placing command blocks. Runs only on your PC.',
+        h_result:'Results', h_story:'What happened, step by step', c_res:'Result', c_what:'What it does', c_cmd:'Command', c_reply:'Server reply / error location', c_seen:'What players saw',
+        ok:'OK', ng:'Failed', passed:(a,b)=>`${a} / ${b} steps passed`, saw:'seen' } };
+let LAST = [];
+function L() { return I18N[$('lang').value] || I18N.ja; }
+function applyLang() {
+  document.querySelectorAll('[data-i]').forEach((el) => { const v = L()[el.dataset.i]; if (typeof v === 'string') el.textContent = v; });
+  render(LAST);
+}
+function render(res) {
+  LAST = res || [];
+  const en = $('lang').value === 'en';
+  const tb = $('results').querySelector('tbody'); tb.innerHTML = '';
+  const story = $('story'); story.innerHTML = '';
+  let ok = 0;
+  for (const r of LAST) {
+    if (r.ok) ok++;
+    const what = en ? r.explain_en : r.explain_ja;
+    const where = en ? r.where_en : r.where_ja;
+    const li = document.createElement('li');
+    li.className = r.ok ? '' : 'ng';
+    li.textContent = `${what} — ${r.ok ? L().ok : L().ng}` + (r.ok ? '' : `: ${r.why || ''} ${where || ''}`) + ((r.seen || []).length ? ` (${L().saw}: ${r.seen.slice(0, 3).join(' / ')})` : '');
+    story.appendChild(li);
+    const tr = document.createElement('tr');
+    tr.innerHTML = '<td></td><td></td><td></td><td><code></code></td><td></td><td></td>';
+    tr.children[0].textContent = r.i;
+    tr.children[1].innerHTML = r.ok ? `<span class="ok">${L().ok}</span>` : `<span class="ng">${L().ng}</span>`;
+    tr.children[2].textContent = what;
+    tr.children[3].querySelector('code').textContent = r.command;
+    tr.children[4].textContent = (r.why ? r.why + ' ' : '') + (r.output || '');
+    if (where) { const w = document.createElement('div'); w.className = 'where'; w.textContent = where; tr.children[4].appendChild(w); }
+    tr.children[5].textContent = (r.seen || []).join(' / ');
+    tb.appendChild(tr);
+  }
+  $('summary').textContent = LAST.length ? L().passed(ok, LAST.length) : '';
+}
+async function refresh() {
+  try {
+    const s = await (await fetch('/api/status')).json();
+    $('srvPill').textContent = s.running ? `起動中(${s.version})` : '停止中';
+    $('srvPill').className = 'pill' + (s.running ? ' on' : '');
+    $('players').textContent = s.players.length ? '入っている: ' + s.players.join(', ') : '';
+    $('log').textContent = (s.log || []).join('\n');
+  } catch (e) {}
+}
+(async () => {
+  const v = await (await fetch('/api/versions')).json();
+  for (const x of v.supported) { const o = document.createElement('option'); o.textContent = x; $('ver').appendChild(o); }
+  $('ver').value = v.supported.includes('1.20.1') ? '1.20.1' : v.supported[0];
+  $('script').value = JSON.stringify(EXAMPLE, null, 2);
+  try { $('lang').value = localStorage.getItem('cmdlab_lang') || 'ja'; } catch (e) {}
+  const q = new URLSearchParams(location.search);
+  if (q.get('lang')) $('lang').value = q.get('lang');
+  applyLang();
+  if (q.get('demo')) {  // ?demo=1 shows a sample result (for screenshots and first-time users)
+    render([
+      { i: 1, ok: true, command: 'scoreboard objectives add points dummy "得点"', output: 'Created new objective [得点]', explain_ja: 'スコアボードの項目「points」を作る', explain_en: 'Create scoreboard objective "points"', seen: [] },
+      { i: 2, ok: true, command: 'team join red Tester1', output: 'Added 1 entity to team red', explain_ja: 'Tester1 をチーム「red」に入れる', explain_en: 'Put Tester1 on team "red"', seen: [] },
+      { i: 3, ok: true, command: 'title @a title {"text":"ゲーム開始"}', output: 'Showing new title for 3 players', explain_ja: '全員 の画面に 大きな文字 を表示する', explain_en: "Show a title on everyone's screen", seen: ['ゲーム開始', 'ゲーム開始'] },
+      { i: 4, ok: false, command: 'scoreboard players add Tester1 points x', output: 'Invalid integer \'x\'\n...ers add Tester1 points x<--[HERE]', why: 'server rejected the command', explain_ja: 'Tester1 の「points」に x 足す', explain_en: 'Add x to Tester1\'s "points"', where_ja: 'エラーの場所: 37 文字目付近「ers add Tester1 points x」', where_en: 'Error near column 37: "ers add Tester1 points x"', seen: [] },
+      { i: 5, ok: true, command: '3 command blocks: scoreboard players add Tester2 → execute if score Tester2 → say 条件付き', output: '#1 success=1 | #2 success=1 | #3 success=1', explain_ja: 'コマンドブロックを 3 個並べて動かす: Tester2 の「points」に 5 足す → 条件が成り立つとき全員のチャットに「青に5点」と表示する → 全員のチャットに「条件付きの確認」と表示する', explain_en: 'Place and run a line of 3 command blocks', seen: ['[@] 青に5点'] },
+    ]);
+  }
+  refresh(); setInterval(refresh, 3000);
+})();
+$('lang').onchange = () => { try { localStorage.setItem('cmdlab_lang', $('lang').value); } catch (e) {} applyLang(); };
+$('btnSetup').onclick = (e) => busy(e.target, async () => {
+  const j = await call('/api/setup', { version: $('ver').value, accept_eula: $('eula').checked });
+  $('srvStatus').textContent = `準備できました(${j.jar}・データパックの形式 ${j.pack_format})`;
+});
+$('btnStart').onclick = (e) => busy(e.target, async () => { await call('/api/start', { version: $('ver').value }); $('srvStatus').textContent = '起動しました'; });
+$('btnStop').onclick = (e) => busy(e.target, async () => { await call('/api/stop'); $('srvStatus').textContent = '止めました'; });
+$('btnPlayers').onclick = (e) => busy(e.target, async () => { const j = await call('/api/players', { count: +$('count').value }); $('players').textContent = '入った: ' + j.spawned.join(', '); });
+$('btnLint').onclick = (e) => busy(e.target, async () => {
+  const j = await call('/api/lint', { pack_dir: $('pack').value, version: $('ver').value });
+  $('packStatus').textContent = j.findings.length ? j.findings.map((f) => `[${f.level}] ${f.file}:${f.line} ${f.message}`).join('\n') : 'この版で問題は見つかりませんでした';
+});
+$('btnPack').onclick = (e) => busy(e.target, async () => {
+  const j = await call('/api/install_pack', { pack_dir: $('pack').value });
+  const head = (j.load_errors && j.load_errors.length)
+    ? (L() === I18N.en ? 'Load errors (function, line, reason):\n' : '読み込みエラー(関数・行・理由):\n') + j.load_errors.join('\n') + '\n\n'
+    : (L() === I18N.en ? 'Installed\n' : '入れました\n');
+  $('packStatus').textContent = head + j.server;
+});
+$('btnRun').onclick = (e) => busy(e.target, async () => { const j = await call('/api/run', { script: $('script').value }); render(j.results); });
+$('btnExample').onclick = () => { $('script').value = JSON.stringify(EXAMPLE, null, 2); };
+$('btnGen').onclick = (e) => busy(e.target, async () => {
+  const j = await call('/api/ai/generate', { request: $('req').value, version: $('ver').value, players: +$('count').value });
+  $('script').value = JSON.stringify(j.script, null, 2);
+});
+$('btnFix').onclick = (e) => busy(e.target, async () => {
+  const j = await call('/api/ai/fix', { request: $('req').value, players: +$('count').value });
+  $('script').value = JSON.stringify(j.script, null, 2);
+});
+</script>
+</body>
+</html>
