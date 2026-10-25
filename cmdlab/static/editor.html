@@ -1,0 +1,1379 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>mc-cmdlab Editor</title>
+<style>
+:root { --bg:#f7f7f5; --card:#fff; --ink:#1d1d1f; --sub:#6b6b70; --line:#e3e3e0; --acc:#2f6f4e; --ok:#2f7d4a; --ng:#b3261e; --warn:#a56500; --code:#f1f1ee;
+  --imp:#d9772b; --chn:#3f9b5a; --rep:#7b55c7; --rs:#c62828; --soft:rgba(127,127,127,.10); }
+@media (prefers-color-scheme: dark) { :root { --bg:#16171a; --card:#1f2024; --ink:#ececec; --sub:#a0a0a6; --line:#2e2f34; --acc:#6fc49a; --ok:#6fc49a; --ng:#ff8a80; --warn:#f0b75a; --code:#26272c; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.6 system-ui, "Hiragino Sans", "Yu Gothic UI", sans-serif; }
+a { color:var(--acc); }
+header { padding:16px 24px 4px; display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; }
+h1 { margin:0; font-size:22px; } h1 small { font-size:15px; color:var(--sub); font-weight:500; margin-left:8px; }
+.hright { display:flex; gap:14px; align-items:center; flex-wrap:wrap; }
+.wrap { padding:8px 24px 32px; display:flex; flex-direction:column; gap:12px; }
+@media (max-width: 900px) { .wrap { padding:8px 16px 24px; } header { padding:12px 16px 4px; } }
+section, .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px 16px; min-width:0; }
+h2 { margin:0 0 8px; font-size:16px; } h3 { margin:12px 0 6px; font-size:14px; }
+label.f { display:block; color:var(--sub); font-size:12px; margin:6px 0 2px; }
+input, select, textarea { width:100%; padding:6px 9px; border:1px solid var(--line); border-radius:8px; background:var(--bg); color:var(--ink); font:inherit; font-size:14px; min-width:0; }
+input[type=checkbox] { width:auto; }
+textarea { font:13px/1.5 ui-monospace, Consolas, monospace; }
+.mono { font-family: ui-monospace, Consolas, monospace; font-size:12.5px; }
+.row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+.row > .grow { flex:1 1 160px; }
+button { padding:6px 12px; border-radius:8px; border:1px solid var(--acc); background:var(--acc); color:#fff; font:inherit; font-size:14px; cursor:pointer; white-space:nowrap; }
+button.ghost { background:transparent; color:var(--acc); }
+button.mini { padding:2px 8px; font-size:12px; border-radius:6px; background:transparent; color:var(--sub); border-color:var(--line); }
+button.mini:hover { color:var(--acc); border-color:var(--acc); }
+button.danger { border-color:var(--ng); color:var(--ng); background:transparent; }
+button:disabled { opacity:.5; cursor:wait; }
+.status { font-size:13px; color:var(--sub); white-space:pre-wrap; }
+.pill { display:inline-block; padding:1px 8px; border-radius:99px; font-size:12px; border:1px solid var(--line); color:var(--sub); white-space:nowrap; }
+.pill.on { border-color:var(--ok); color:var(--ok); }
+.check { display:inline-flex; gap:6px; align-items:center; font-size:13px; color:var(--ink); }
+.help { font-size:13px; color:var(--sub); margin:0 0 8px; }
+.ok { color:var(--ok); font-weight:600; } .ng { color:var(--ng); font-weight:600; } .warn { color:var(--warn); font-weight:600; }
+.dirty { color:var(--warn); font-size:12px; }
+
+/* project bar */
+.pbar { display:grid; grid-template-columns: minmax(220px, 2fr) repeat(4, minmax(110px, 1fr)); gap:4px 10px; align-items:end; }
+@media (max-width: 1100px) { .pbar { grid-template-columns: 1fr 1fr; } }
+.msgs { margin-top:8px; font-size:13px; } .msgs li { cursor:pointer; } .msgs ul { margin:4px 0; padding-left:20px; }
+
+/* run bar */
+.runbar { display:flex; gap:10px 18px; flex-wrap:wrap; align-items:flex-end; }
+.runbar .grp { display:flex; gap:6px; align-items:flex-end; flex-wrap:wrap; }
+.sep { width:1px; align-self:stretch; background:var(--line); }
+
+/* main layout */
+.main { display:grid; grid-template-columns: 290px minmax(0, 1fr); gap:12px; align-items:start; }
+@media (max-width: 900px) { .main { grid-template-columns: 1fr; } }
+aside { display:flex; flex-direction:column; gap:12px; min-width:0; }
+.list { list-style:none; margin:0; padding:0; }
+.list li { border:1px solid transparent; border-radius:8px; padding:5px 8px; cursor:pointer; margin:2px 0; }
+.list li:hover { background:var(--soft); }
+.list li.sel { border-color:var(--acc); background:var(--soft); }
+.list .lt { display:flex; gap:6px; align-items:center; justify-content:space-between; }
+.list .lab { font-weight:600; font-size:14px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.list .sub { font-size:11.5px; color:var(--sub); font-family: ui-monospace, Consolas, monospace; }
+.list .tools { display:flex; gap:4px; margin-top:4px; }
+.badges { display:flex; gap:3px; flex-wrap:wrap; flex-shrink:0; }
+.b { font-size:10.5px; padding:0 6px; border-radius:4px; color:#fff; line-height:17px; white-space:nowrap; }
+.b.function { background:#4a6fa5; } .b.blocks { background:var(--imp); } .b.steps { background:#2f8f8f; }
+.b.tick { background:#9a3c6a; } .b.load { background:#6a6a2f; } .b.err { background:var(--ng); } .b.rep { background:var(--rep); }
+.addrow { display:flex; gap:4px; flex-wrap:wrap; margin-top:8px; }
+
+/* tabs */
+.tabs { display:flex; gap:4px; border-bottom:1px solid var(--line); margin:-4px 0 12px; flex-wrap:wrap; }
+.tabs button { background:transparent; color:var(--sub); border:none; border-bottom:3px solid transparent; border-radius:0; padding:6px 12px; }
+.tabs button.on { color:var(--acc); border-bottom-color:var(--acc); font-weight:600; }
+.edhead { display:grid; grid-template-columns: minmax(160px, 2fr) minmax(120px, 1fr) auto; gap:4px 10px; align-items:end; margin-bottom:8px; }
+@media (max-width: 700px) { .edhead { grid-template-columns: 1fr; } }
+
+/* function editor */
+.code { display:flex; border:1px solid var(--line); border-radius:8px; background:var(--bg); overflow:hidden; height:380px; }
+.code .gut { flex:0 0 42px; overflow:hidden; background:var(--code); color:var(--sub); text-align:right; padding:8px 6px 8px 0; font:13px/20px ui-monospace, Consolas, monospace; user-select:none; }
+.code .gut div { height:20px; } .code .gut .bad { color:#fff; background:var(--ng); border-radius:3px; } .code .gut .wn { color:#fff; background:var(--warn); border-radius:3px; }
+.code textarea { flex:1; border:none; border-radius:0; resize:none; padding:8px; font:13px/20px ui-monospace, Consolas, monospace; white-space:pre; overflow:auto; height:100%; background:transparent; }
+.chips { display:flex; gap:4px; flex-wrap:wrap; align-items:center; font-size:13px; }
+.chip { border:1px solid var(--line); border-radius:99px; padding:0 8px; font-size:12px; cursor:pointer; background:var(--bg); }
+.chip:hover { border-color:var(--acc); color:var(--acc); }
+.findings { font-size:13px; margin:6px 0 0; padding-left:18px; }
+
+/* blocks editor */
+.views { display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-top:8px; }
+@media (max-width: 1000px) { .views { grid-template-columns: 1fr; } }
+.view { border:1px solid var(--line); border-radius:10px; padding:8px; background:var(--bg); min-width:0; }
+.view h3 { margin:0 0 4px; font-size:13px; } .view .vh { font-size:12px; color:var(--sub); margin:0 0 4px; }
+.view svg { width:100%; height:auto; max-height:420px; display:block; }
+.view svg .blk { cursor:pointer; }
+.legend { display:flex; gap:12px; flex-wrap:wrap; font-size:12px; color:var(--sub); margin-top:8px; align-items:center; }
+.sw { display:inline-block; width:14px; height:14px; border-radius:3px; vertical-align:-2px; margin-right:4px; }
+table { width:100%; border-collapse:collapse; font-size:13px; }
+th, td { text-align:left; padding:5px 6px; border-bottom:1px solid var(--line); vertical-align:top; }
+th { color:var(--sub); font-weight:500; font-size:12px; }
+#blkTable tbody tr { cursor:pointer; } #blkTable tbody tr:hover { background:var(--soft); } #blkTable tr.sel { outline:2px solid var(--acc); }
+td code, .cmd { background:var(--code); padding:1px 4px; border-radius:4px; word-break:break-all; font:12.5px ui-monospace, Consolas, monospace; }
+.bform { border:2px solid var(--acc); border-radius:10px; padding:10px 12px; margin-top:10px; }
+.grid4 { display:grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap:4px 10px; }
+.grid3 { display:grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap:4px 10px; }
+@media (max-width: 700px) { .grid4, .grid3 { grid-template-columns: 1fr 1fr; } }
+.sq { display:inline-block; width:16px; height:16px; border-radius:3px; vertical-align:-3px; color:#fff; font-size:10px; text-align:center; line-height:16px; }
+.sq.impulse { background:var(--imp); } .sq.chain { background:var(--chn); } .sq.repeat { background:var(--rep); }
+
+/* step flow */
+.flow { display:flex; flex-direction:column; align-items:stretch; }
+.arrow { text-align:center; color:var(--sub); font-size:18px; line-height:20px; height:22px; user-select:none; }
+.st { border:1px solid var(--line); border-left:6px solid #999; border-radius:10px; background:var(--card); padding:8px 10px; }
+.st.call { border-left-color:#4a6fa5; background:linear-gradient(90deg, rgba(74,111,165,.08), transparent 60%); }
+.st.call.blocks { border-left-color:var(--imp); background:linear-gradient(90deg, rgba(217,119,43,.09), transparent 60%); }
+.st.call.steps { border-left-color:#2f8f8f; background:linear-gradient(90deg, rgba(47,143,143,.09), transparent 60%); }
+.st.do { border-left-color:#2f8f8f; } .st.run { border-left-color:#555; } .st.wait { border-left-color:#c9a227; border-style:dashed solid dashed solid; } .st.raw { border-left-color:#999; }
+.st.drag { opacity:.4; } .st.over { outline:2px dashed var(--acc); }
+.st .top { display:flex; gap:8px; align-items:center; }
+.st .num { flex:0 0 auto; font:600 12px ui-monospace, Consolas, monospace; background:var(--code); border-radius:6px; padding:1px 6px; color:var(--sub); }
+.st .kind { flex:0 0 auto; font-size:12px; font-weight:600; color:var(--sub); }
+.st .sum { flex:1; min-width:0; font-size:14px; overflow-wrap:anywhere; }
+.st .tools { display:flex; gap:3px; flex:0 0 auto; }
+.st .handle { cursor:grab; color:var(--sub); user-select:none; }
+.st .prev { margin:6px 0 0 30px; font-size:12px; color:var(--sub); }
+.st .prev .cmd { display:block; margin:1px 0; white-space:pre-wrap; }
+.st .exp { margin:4px 0 0 30px; display:flex; gap:4px; flex-wrap:wrap; }
+.st .exp span { font-size:11.5px; border-radius:4px; padding:0 6px; background:rgba(47,125,74,.12); color:var(--ok); }
+.st .body { margin-top:8px; border-top:1px dashed var(--line); padding-top:6px; }
+.st .res { flex:0 0 auto; font-size:12px; }
+.st.selrun { box-shadow: 0 0 0 2px var(--acc) inset; }
+
+/* flow view */
+.fv { display:grid; grid-template-columns: minmax(0, 1fr) 320px; gap:12px; align-items:start; }
+@media (max-width: 1100px) { .fv { grid-template-columns: 1fr; } }
+.tl { width:100%; border-collapse:separate; border-spacing:0; }
+.tl td { border-bottom:1px solid var(--line); padding:5px 6px; vertical-align:middle; }
+.tl .n { font:600 12px ui-monospace, Consolas, monospace; color:var(--sub); width:34px; text-align:right; }
+.tl .t { font:11.5px ui-monospace, Consolas, monospace; color:var(--sub); width:58px; white-space:nowrap; }
+.tl .grp { font-size:11.5px; color:#fff; border-radius:4px; padding:0 6px; white-space:nowrap; }
+.tl .lane { width:22px; padding:0; position:relative; border-bottom:none; }
+.tl .lane i { position:absolute; left:8px; top:0; bottom:0; width:6px; border-radius:2px; }
+.tl .lane i.tick { background:#9a3c6a; } .tl .lane i.rep { background:var(--rep); }
+.tl .lane i.start { top:40%; }
+.tl tr.pre td { background:var(--soft); font-size:13px; }
+.tl tr.waitrow td.d { color:#8a6d00; }
+.tl th { font-size:12px; color:var(--sub); font-weight:500; text-align:left; padding:4px 6px; border-bottom:1px solid var(--line); }
+.tl th.lh { padding:4px 0; text-align:center; width:22px; }
+.lsw { display:inline-block; min-width:16px; height:16px; border-radius:3px; color:#fff; font-size:10px; line-height:16px; text-align:center; padding:0 2px; }
+.lsw.tick { background:#9a3c6a; } .lsw.rep { background:var(--rep); }
+.lanes { display:flex; gap:12px; flex-wrap:wrap; font-size:12px; color:var(--sub); margin:0 0 6px; }
+.bg { border:1px solid var(--line); border-radius:10px; padding:10px 12px; background:var(--bg); margin-bottom:10px; }
+.bg h3 { margin:0 0 6px; }
+.tree { list-style:none; padding-left:14px; margin:2px 0; font-size:13px; } .tree li::before { content:"↳ "; color:var(--sub); }
+.tree.root { padding-left:0; } .tree.root > li::before { content:""; }
+
+/* results (same look as the main page) */
+.story { margin:0 0 12px; padding-left:22px; font-size:14px; } .story li { margin:4px 0; cursor:pointer; }
+.story li:hover, #results tbody tr:hover { background:rgba(127,127,127,.12); } #results tbody tr { cursor:pointer; }
+.story li.sel, #results tbody tr.sel { outline:2px solid var(--acc); } .story li.ng { color:var(--ng); } .where { color:var(--ng); font-weight:600; }
+.loaderr { border:2px solid var(--ng); border-radius:10px; padding:8px 12px; margin-bottom:10px; }
+.loaderr li { font:12.5px ui-monospace, Consolas, monospace; }
+pre.log { background:var(--code); border-radius:8px; padding:8px; max-height:200px; overflow:auto; font-size:12px; white-space:pre-wrap; }
+.mc { position:relative; height:420px; border-radius:10px; overflow:hidden; margin-top:10px;
+  background: linear-gradient(#7fb2ff 0%, #a9cbff 55%, #6a9b3c 55%, #4e7a2a 100%); font-family: ui-monospace, Consolas, monospace; color:#fff; text-shadow: 2px 2px 0 #3f3f3f; }
+.mc-boss { position:absolute; top:8px; left:50%; transform:translateX(-50%); width:60%; text-align:center; font-size:13px; }
+.mc-boss .bar { height:6px; background:#333; margin:2px 0 8px; } .mc-boss .fill { height:100%; }
+.mc-title { position:absolute; top:34%; width:100%; text-align:center; } #mcTitle { font-size:40px; font-weight:700; } #mcSub { font-size:18px; }
+.mc-side { position:absolute; right:6px; top:50%; transform:translateY(-50%); background:rgba(0,0,0,.35); font-size:13px; min-width:150px; text-shadow:none; }
+.mc-side .h { text-align:center; background:rgba(0,0,0,.25); padding:2px 6px; } .mc-side .r { display:flex; justify-content:space-between; gap:14px; padding:0 6px; } .mc-side .r b { color:#ff5555; font-weight:400; }
+.mc-tab { position:absolute; top:58px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,.55); padding:6px; font-size:13px; display:none; min-width:220px; text-shadow:none; }
+.mc-tab div { background:rgba(255,255,255,.12); margin:2px 0; padding:1px 6px; }
+.mc-chat { position:absolute; left:6px; bottom:64px; width:52%; font-size:13px; } .mc-chat div { background:rgba(0,0,0,.45); padding:1px 4px; text-shadow:none; }
+.mc-action { position:absolute; bottom:64px; width:100%; text-align:center; font-size:14px; }
+.mc-extra { position:absolute; left:6px; top:6px; max-width:40%; font-size:12px; text-shadow:none; } .mc-extra div { background:rgba(0,0,0,.45); padding:1px 5px; margin-bottom:2px; }
+.mc-window { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); background:#c6c6c6; color:#333; border:3px solid #555; padding:6px; font-size:12px; text-shadow:none; display:none; max-width:60%; }
+.mc-window .slots { display:grid; grid-template-columns:repeat(9, 1fr); gap:2px; margin-top:4px; } .mc-window .slots div { background:#8b8b8b; color:#fff; min-height:30px; font-size:10px; padding:2px; overflow:hidden; }
+.mc-hud { position:absolute; bottom:8px; left:50%; transform:translateX(-50%); width:364px; max-width:90%; height:44px; background:rgba(0,0,0,.4); border:2px solid #222; font-size:12px; text-align:center; line-height:40px; text-shadow:none; }
+.c0{color:#000}.c1{color:#00a}.c2{color:#0a0}.c3{color:#0aa}.c4{color:#a00}.c5{color:#a0a}.c6{color:#fa0}.c7{color:#aaa}.c8{color:#555}.c9{color:#55f}.ca{color:#5f5}.cb{color:#5ff}.cc{color:#f55}.cd{color:#f5f}.ce{color:#ff5}.cf{color:#fff}
+@media (max-width: 600px) { .pbar { grid-template-columns: 1fr; } .runbar .sep, .row .sep { display:none; } .grid4, .grid3 { grid-template-columns: 1fr; } }
+.pbar > div, .grid4 > div, .grid3 > div, .edhead > div { min-width:0; }
+select { max-width:100%; text-overflow:ellipsis; }
+.list .lab { min-width:0; }
+.empty { color:var(--sub); font-size:14px; padding:16px; text-align:center; border:1px dashed var(--line); border-radius:10px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>mc-cmdlab <small data-i="subtitle">コマンド設定ページ</small></h1>
+  <div class="hright">
+    <a href="/" id="lnkMain" data-i="back_main">← メインページ(サーバー・プレイヤー・1回きりの台本)</a>
+    <label class="check"><span data-i="lang">言語</span>
+      <select id="lang" style="width:auto"><option value="ja">日本語</option><option value="en">English</option></select></label>
+  </div>
+</header>
+<div class="wrap">
+  <!-- 1. project bar -->
+  <section>
+    <div class="pbar">
+      <div><label class="f" data-i="l_open">プロジェクトを開く(例・保存したもの)</label>
+        <div class="row" style="flex-wrap:nowrap"><select id="projPick"></select><button class="ghost" id="btnOpen" data-i="b_open">開く</button></div></div>
+      <div><label class="f" data-i="l_title">題名</label><input id="pTitle"></div>
+      <div><label class="f" data-i="l_ns">名前空間(関数名の前)</label><input id="pNs" class="mono"></div>
+      <div><label class="f" data-i="l_ver">マイクラの版</label><select id="pVer"></select></div>
+      <div><label class="f" data-i="l_players">テスト用プレイヤー</label><input id="pPlayers" data-ip="ph_players" placeholder="Alice, Bob"></div>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <button class="ghost" id="btnNew" data-i="b_new">新規</button>
+      <span class="sep"></span>
+      <input id="saveName" class="mono" style="width:180px" data-ip="ph_savename" placeholder="保存名">
+      <button id="btnSave" data-i="b_save">保存</button>
+      <button class="ghost" id="btnCheck" data-i="b_check">点検する</button>
+      <button class="ghost" id="btnExport" data-i="b_export">データパックに書き出す</button>
+      <span id="dirty" class="dirty"></span>
+      <span id="pStatus" class="status"></span>
+    </div>
+    <div id="msgs" class="msgs"></div>
+  </section>
+
+  <!-- 5. run bar -->
+  <section>
+    <h2 data-i="h_run">テストを流す</h2>
+    <div class="runbar">
+      <div class="grp">
+        <div><label class="f" data-i="l_target_sc">流すシナリオ</label><select id="runSc" style="min-width:200px"></select></div>
+        <button id="btnRunSc" data-i="b_run_sc">▶ シナリオ全体を流す</button>
+      </div>
+      <div class="grp">
+        <button class="ghost" id="btnRunMod" data-i="b_run_mod">▶ 選んだ部品だけ流す</button>
+      </div>
+      <div class="grp">
+        <div><label class="f" data-i="l_only">チェックした段(展開後の番号)</label><input id="runOnly" class="mono" style="width:130px" data-ip="ph_only" placeholder="1-3,6"></div>
+        <button class="ghost" id="btnRunOnly" data-i="b_run_only">▶ チェックした段だけ流す</button>
+      </div>
+      <span class="sep"></span>
+      <div class="grp">
+        <span id="srvPill" class="pill">-</span>
+        <button class="mini" id="btnStart" data-i="b_start">サーバー起動</button>
+        <button class="mini" id="btnStop" data-i="b_stop">止める</button>
+        <button class="mini" id="btnPlayers" data-i="b_players">プレイヤーを入れる</button>
+        <label class="check"><input type="checkbox" id="opPlayers"><span data-i="l_op">OP にする</span></label>
+      </div>
+    </div>
+    <div class="status" id="runStatus" style="margin-top:6px"></div>
+  </section>
+
+  <div class="main">
+    <!-- 2. modules, 3. scenarios -->
+    <aside>
+      <section>
+        <h2 data-i="h_modules">コマンド集の部品</h2>
+        <p class="help" data-i="help_modules">ゲームの部分ごとの部品。関数・コマンドブロックの列・プレイヤーの動きの3種類。</p>
+        <ul class="list" id="modList"></ul>
+        <div class="addrow">
+          <button class="mini" id="addFn" data-i="add_fn">+ 関数</button>
+          <button class="mini" id="addBl" data-i="add_bl">+ コマンドブロック</button>
+          <button class="mini" id="addSt" data-i="add_st">+ プレイヤーの動き</button>
+        </div>
+      </section>
+      <section>
+        <h2 data-i="h_scen">シナリオ</h2>
+        <p class="help" data-i="help_scen">部品をどの順で呼ぶか。試したい流れごとに1つ。</p>
+        <ul class="list" id="scList"></ul>
+        <div class="addrow"><button class="mini" id="addSc" data-i="add_sc">+ シナリオ</button></div>
+      </section>
+    </aside>
+
+    <section>
+      <div class="tabs">
+        <button id="tabEdit" data-i="tab_edit">編集</button>
+        <button id="tabFlow" data-i="tab_flow">実行の流れ</button>
+        <button id="tabRes" data-i="tab_res">結果</button>
+      </div>
+      <div id="paneEdit"></div>
+      <div id="paneFlow" style="display:none"></div>
+      <div id="paneRes" style="display:none">
+        <div id="loadErr"></div>
+        <div id="summary" class="status"></div>
+        <h3 data-i="h_story">順番に何が起きたか</h3>
+        <ol id="story" class="story"></ol>
+        <div id="screenWrap">
+          <h3 data-i="h_screen">マイクラの画面での見え方</h3>
+          <div class="row">
+            <label class="check"><span data-i="l_player">プレイヤー</span> <select id="scrPlayer" style="width:auto"></select></label>
+            <label class="check"><span data-i="l_step">段</span> <input id="scrStep" type="range" min="1" max="1" value="1" style="width:200px"> <b id="scrStepN">1</b></label>
+            <label class="check"><input type="checkbox" id="scrTab"> <span data-i="l_tab">Tab を押した状態</span></label>
+          </div>
+          <div class="mc" id="mc">
+            <div class="mc-boss" id="mcBoss"></div>
+            <div class="mc-title"><div id="mcTitle"></div><div id="mcSub"></div></div>
+            <div class="mc-side" id="mcSide"></div>
+            <div class="mc-tab" id="mcTab"></div>
+            <div class="mc-chat" id="mcChat"></div>
+            <div class="mc-action" id="mcAct"></div>
+            <div class="mc-hud" id="mcHud"></div>
+            <div class="mc-extra" id="mcExtra"></div>
+            <div class="mc-window" id="mcWindow"></div>
+          </div>
+          <div class="status" id="mcNote"></div>
+        </div>
+        <h3 data-i="h_table">各段の詳細</h3>
+        <div style="overflow-x:auto">
+        <table id="results"><thead><tr><th>#</th><th data-i="c_res">結果</th><th data-i="c_what">していること</th><th data-i="c_cmd">コマンド</th><th data-i="c_reply">サーバーの返事・エラーの場所</th><th data-i="c_seen">プレイヤーが見たもの</th></tr></thead><tbody></tbody></table>
+        </div>
+        <h3 data-i="h_log">サーバーのログ</h3>
+        <pre class="log" id="log"></pre>
+      </div>
+    </section>
+  </div>
+</div>
+<script>
+'use strict';
+const $ = (id) => document.getElementById(id);
+const I18N = {
+  ja: {
+    subtitle:'コマンド設定ページ', back_main:'← メインページ(サーバー・プレイヤー・1回きりの台本)', lang:'言語',
+    l_open:'プロジェクトを開く(例・保存したもの)', b_open:'開く', l_title:'題名', l_ns:'名前空間(関数名の前)', l_ver:'マイクラの版', l_players:'テスト用プレイヤー',
+    ph_players:'Alice, Bob', b_new:'新規', ph_savename:'保存名', b_save:'保存', b_check:'点検する', b_export:'データパックに書き出す',
+    where_example:'例', where_saved:'保存', unsaved:'● 未保存の変更あり', h_run:'テストを流す', l_target_sc:'流すシナリオ', b_run_sc:'▶ シナリオ全体を流す',
+    b_run_mod:'▶ 選んだ部品だけ流す', l_only:'チェックした段(展開後の番号)', ph_only:'例: 1-3,6', b_run_only:'▶ チェックした段だけ流す',
+    b_start:'サーバー起動', b_stop:'止める', b_players:'プレイヤーを入れる', l_op:'OP にする', srv_on:(v)=>`サーバー起動中(${v})`, srv_off:'サーバー停止中',
+    players_in:(a)=>`入っている: ${a}`, no_players:'プレイヤーなし',
+    h_modules:'コマンド集の部品', help_modules:'ゲームの部分ごとの部品。関数・コマンドブロックの列・プレイヤーの動きの3種類。',
+    add_fn:'+ 関数', add_bl:'+ コマンドブロック', add_st:'+ プレイヤーの動き', h_scen:'シナリオ', help_scen:'部品をどの順で呼ぶか。試したい流れごとに1つ。', add_sc:'+ シナリオ',
+    tab_edit:'編集', tab_flow:'実行の流れ', tab_res:'結果',
+    k_function:'関数', k_blocks:'コマンドブロック', k_steps:'プレイヤーの動き', tick:'毎tick', load:'読込時', errs:(n)=>`問題 ${n}`,
+    up:'上へ', down:'下へ', del:'削除', open:'開く →', edit:'編集', close:'閉じる',
+    l_label:'表示名', l_id:'ID(関数名になる・a-z 0-9 _ . / -)', l_kind:'種類', l_note:'メモ', l_tick:'毎 tick 動かす(tick)', l_load:'読み込み時に1回(load)',
+    confirm_del:(n)=>`「${n}」を削除しますか?`, renamed:(a,b,n)=>`ID を ${a} → ${b} に変えました(呼び出し ${n} か所も直しました)`, id_bad:'ID に使えない文字があります(a-z 0-9 _ . / -)', id_dup:'その ID はもう使われています',
+    help_fn:'1行に1コマンド。データパックの .mcfunction と同じ書き方です(先頭の / は不要・# はメモ)。', fn_lines:'行', calls_out:'この関数が呼ぶもの', called_by:'これを呼んでいる所', none:'なし',
+    help_bl:'コマンドブロックの列を、上から見た図と横から見た図で表します。四角をクリックすると中身を変えられます。位置は実行のときと同じ計算です。',
+    l_origin:'最初のブロックの位置 (x y z)', l_facing:'列の向き', l_trigger:'動かし方', l_wait:'置いてから待つ秒数', l_cleanup:'終わったら片付ける',
+    tr_auto:(d)=>`自動(${d})`, tr_redstone_block:'レッドストーンブロックを後ろに置く', tr_button:'上にボタンを置く(プレイヤーが押す)', tr_none:'何も置かない',
+    f_east:'東 (+X)', f_west:'西 (−X)', f_south:'南 (+Z)', f_north:'北 (−Z)', f_up:'上 (+Y)', f_down:'下 (−Y)', f_inherit:'前のブロックと同じ',
+    v_top:'上から見た図', v_top_h:'右が東(+X)・下が南(+Z)。⊙=上向き ⊗=下向き', v_side:(a)=>`横から見た図(${a} と高さ Y)`, v_side_h:'上が高い(+Y)。重なるブロックは少しずらして描きます。',
+    lg_imp:'インパルス(1回)', lg_chn:'チェーン(前が動いたら続く)', lg_rep:'リピート(毎 tick)', lg_cond:'条件付き(前が成功した時だけ)', lg_auto:'常時実行', lg_rs:'レッドストーンが要る',
+    lg_rsb:'レッドストーンブロック', lg_btn:'ボタン', lg_order:'線 = 実行の順', cond_s:'条件', auto_s:'常時', rs_s:'要RS',
+    th_n:'#', th_type:'種類', th_cmd:'コマンド', th_pos:'位置', th_face:'向き', th_flags:'設定',
+    t_impulse:'インパルス', t_chain:'チェーン', t_repeat:'リピート', l_type:'種類', l_cmd:'コマンド', l_cond:'条件付き', l_auto:'動かし方',
+    a_default:(d)=>`種類のまま(${d})`, a_true:'常時実行', a_false:'レッドストーンが要る', l_bfacing:'このブロックの向き(曲がる時に変える)', l_pos:'位置を直接指定 (x y z・空なら前の続き)',
+    b_add_block:'+ ブロックを足す', blk_sel:(n)=>`ブロック ${n} を編集`, no_blocks:'ブロックがありません。「+ ブロックを足す」で足してください。', only_runner_note:'',
+    help_st:'テスト用プレイヤーにさせる動きを順に並べます。シナリオから「部品を呼ぶ」で使えます。',
+    help_sc:'上から順に実行されます。青い枠は「部品を呼ぶ」(クリックでその部品へ)、ほかはその場の動き・コマンド・待ち時間です。左のチェックで一部だけ流せます。',
+    s_call:'部品を呼ぶ', s_do:'プレイヤーの動き', s_run:'コマンド', s_wait:'待つ', s_raw:'その他(JSON)',
+    add_call:'+ 部品を呼ぶ', add_do:'+ プレイヤーの動き', add_run:'+ コマンド', add_wait:'+ 待つ', no_steps:'まだ段がありません。下のボタンで足してください。',
+    call_sum:(l,k)=>`部品「${l}」を呼ぶ(${k})`, run_sum:(c,a)=>`/${c}` + (a ? `(${a} として実行)` : ''), wait_sum:(s)=>`${s} 秒待つ(この間も毎tick・リピートは動く)`,
+    raw_sum:'JSON で書かれた段', unknown_mod:(id)=>`見つからない部品「${id}」`, steps_n:(a,b)=>a===b?`段 ${a}`:`段 ${a}–${b}`, chk_title:'チェックすると「チェックした段だけ流す」に入ります',
+    l_skind:'段の種類', l_module:'呼ぶ部品', l_player:'プレイヤー', l_action:'動き', l_as:'誰として実行(空ならサーバー)', l_secs:'秒', l_wait_after:'後で待つ秒数',
+    expect:'確かめること', e_output_contains:'サーバーの返事に含む文字', e_output_regex:'返事が合う正規表現', e_seen_by:'見る人', e_seen_contains:'画面に出る文字',
+    e_died:'倒れる人', e_hurt:'ダメージを受ける人', e_heard:'聞こえる音', e_heard_by:'聞く人', e_allow_error:'エラーの返事でも失敗にしない',
+    x_output_contains:(v)=>`返事に「${v}」`, x_output_regex:(v)=>`返事 /${v}/`, x_seen:(w,v)=>`${w||'誰か'}の画面に「${v}」`, x_died:(v)=>`${v} が倒れる`, x_hurt:(v)=>`${v} がダメージ`, x_heard:(w,v)=>`${w||'誰か'}に音 ${v}`, x_allow_error:'エラー可',
+    act_chat:'チャットを打つ', act_command:'コマンドを打つ', act_move:'向きに歩く', act_goto:'場所へ行く(道を探す)', act_walk:'まっすぐ歩く', act_look_at:'見る', act_attack:'攻撃する',
+    act_jump:'ジャンプ', act_sneak:'スニーク', act_select:'ホットバーを選ぶ', act_use:'手の物を使う', act_use_block:'ブロックを右クリック', act_use_entity:'エンティティを右クリック',
+    act_dig:'掘る', act_place:'置く', act_click_slot:'画面のスロットをクリック', act_close_window:'画面を閉じる', act_drop:'手の物を捨てる', act_respawn:'リスポーン',
+    p_text:'文字', p_dir:'向き', p_seconds:'秒', p_sprint:'走る', p_x:'x', p_y:'y', p_z:'z', p_range:'近さ', p_target:'相手', p_times:'回数', p_chase:'追いかける',
+    p_slot:'スロット', p_button:'ボタン(0=左 1=右)', p_mode:'モード', p_on:'オン', p_type:'種類(villager など)', p_name:'名前', p_item:'アイテム',
+    d_forward:'前', d_back:'後ろ', d_left:'左', d_right:'右',
+    help_flow:'選んだシナリオを、部品を開いた実際の順番に並べたものです。右の色の帯は「裏でずっと動いているもの」(毎tickの関数・リピートのコマンドブロック)で、いつから動いているかを表します。',
+    fv_pick:'シナリオ', fv_pre:'データパックを読み込む(流す前に1回)', fv_load:(a)=>`読み込み時に動く: ${a}`, fv_tickstart:(a)=>`毎tick の関数が動き始める: ${a}`,
+    fv_t:'時刻(約)', fv_from:'呼び出し元', fv_what:'すること', fv_bg:'裏で動くもの', fv_tick_h:'毎 tick に動く関数(20回/秒)', fv_tick_none:'毎 tick の関数はありません',
+    fv_rep_h:'置いたあとずっと動くコマンドブロック(リピート)', fv_rep_none:'リピートのコマンドブロックはありません', fv_rep_from:(n)=>`段 ${n} で置かれ、その後ずっと動く`, fv_rep_never:'このシナリオでは置かれません',
+    fv_load_h:'読み込み時に1回動く関数', fv_direct:'シナリオの段', fv_blocks:(n)=>`コマンドブロック ${n} 個を置いて動かす`, fv_fn:(n)=>`関数 ${n} 行を実行`, fv_none:'シナリオがありません',
+    fv_mod_note:(l)=>`部品「${l}」だけを流したときの順番`, fv_err:'展開できません: ',
+    h_story:'順番に何が起きたか', h_screen:'マイクラの画面での見え方', l_step:'段', l_tab:'Tab を押した状態', h_table:'各段の詳細', h_log:'サーバーのログ',
+    c_res:'結果', c_what:'していること', c_cmd:'コマンド', c_reply:'サーバーの返事・エラーの場所', c_seen:'プレイヤーが見たもの',
+    ok:'OK', ng:'失敗', passed:(a,b)=>`${a} / ${b} 段が成功`, saw:'見えたもの', no_result:'まだ結果がありません。上の「▶」ボタンで流すと、ここに結果と各プレイヤーの画面が出ます。',
+    screen_none:'プレイヤーを入れて流すと、ここに各プレイヤーの画面が出ます。', not_online:' — このプレイヤーは入っていません', click_step:'クリックでこの段の画面を見る',
+    load_err_h:'データパックの読み込みエラー(関数・行・理由)', running:'流しています…(終わるまで数秒〜数十秒)', ran:(a,b)=>`流し終わりました: ${a} / ${b} 段が成功`,
+    err:'エラー: ', loaded:(n)=>`「${n}」を開きました`, saved:(p)=>`保存しました: ${p}`, exported:(p)=>`データパックを書き出しました: ${p}`,
+    check_ok:'問題は見つかりませんでした', check_probs:'動かない原因', check_lint:'版に合うかの点検', no_sel_mod:'部品を選んでください', no_checked:'チェックした段がありません',
+    nothing_sel:'左の一覧から部品かシナリオを選んでください。', new_title:'新しいゲーム', new_sc:'シナリオ', new_fn:'新しい関数', new_bl:'新しいコマンドブロック', new_st:'新しい動き',
+    eff:'効果 ', below:'名前の下: ', teamside:'チームのサイドバー: ', sounds:'音: ', window:'画面', confirm_new:'今の変更を捨てて新しいプロジェクトにしますか?', confirm_open:'保存していない変更があります。開きますか?',
+    sc_steps:(n)=>`${n} 段`, res_ok:(a,b)=>`✓ ${a}/${b}`, res_ng:(a,b)=>`✗ ${a}/${b}`, preview_more:(n)=>`…ほか ${n} 行`,
+  },
+  en: {
+    subtitle:'Command editor', back_main:'← Main page (server, players, one-off scripts)', lang:'Language',
+    l_open:'Open a project (examples, saved)', b_open:'Open', l_title:'Title', l_ns:'Namespace (before function names)', l_ver:'Minecraft version', l_players:'Test players',
+    ph_players:'Alice, Bob', b_new:'New', ph_savename:'Save name', b_save:'Save', b_check:'Check', b_export:'Export as data pack',
+    where_example:'example', where_saved:'saved', unsaved:'● Unsaved changes', h_run:'Run a test', l_target_sc:'Scenario to run', b_run_sc:'▶ Run whole scenario',
+    b_run_mod:'▶ Run selected part only', l_only:'Checked steps (expanded numbers)', ph_only:'e.g. 1-3,6', b_run_only:'▶ Run checked steps only',
+    b_start:'Start server', b_stop:'Stop', b_players:'Add players', l_op:'Make OP', srv_on:(v)=>`Server running (${v})`, srv_off:'Server stopped',
+    players_in:(a)=>`Online: ${a}`, no_players:'No players',
+    h_modules:'Parts (command sets)', help_modules:'One part per piece of the game: a function, a command block line, or player actions.',
+    add_fn:'+ Function', add_bl:'+ Command blocks', add_st:'+ Player actions', h_scen:'Scenarios', help_scen:'The order parts are called in. One per flow you want to test.', add_sc:'+ Scenario',
+    tab_edit:'Edit', tab_flow:'Execution flow', tab_res:'Results',
+    k_function:'Function', k_blocks:'Command blocks', k_steps:'Player actions', tick:'tick', load:'load', errs:(n)=>`${n} issue${n>1?'s':''}`,
+    up:'Up', down:'Down', del:'Delete', open:'Open →', edit:'Edit', close:'Close',
+    l_label:'Label', l_id:'ID (becomes the function name; a-z 0-9 _ . / -)', l_kind:'Kind', l_note:'Note', l_tick:'Run every tick (tick)', l_load:'Run once on load (load)',
+    confirm_del:(n)=>`Delete "${n}"?`, renamed:(a,b,n)=>`Renamed ID ${a} → ${b} (also fixed ${n} reference${n===1?'':'s'})`, id_bad:'The ID has characters that are not allowed (a-z 0-9 _ . / -)', id_dup:'That ID is already used',
+    help_fn:'One command per line, same as a data pack .mcfunction (no leading /, # for notes).', fn_lines:'lines', calls_out:'This function calls', called_by:'Called from', none:'none',
+    help_bl:'The command block line seen from above and from the side. Click a square to change it. Positions are computed exactly as when the test runs.',
+    l_origin:'First block position (x y z)', l_facing:'Line direction', l_trigger:'How it is powered', l_wait:'Seconds to wait after placing', l_cleanup:'Remove when done',
+    tr_auto:(d)=>`Automatic (${d})`, tr_redstone_block:'Redstone block behind it', tr_button:'Button on top (a player presses it)', tr_none:'Nothing',
+    f_east:'East (+X)', f_west:'West (−X)', f_south:'South (+Z)', f_north:'North (−Z)', f_up:'Up (+Y)', f_down:'Down (−Y)', f_inherit:'Same as previous block',
+    v_top:'Seen from above', v_top_h:'Right = east (+X), down = south (+Z). ⊙ = facing up, ⊗ = facing down', v_side:(a)=>`Seen from the side (${a} and height Y)`, v_side_h:'Up = higher (+Y). Overlapping blocks are drawn slightly offset.',
+    lg_imp:'Impulse (once)', lg_chn:'Chain (runs after the previous one)', lg_rep:'Repeat (every tick)', lg_cond:'Conditional (only if previous succeeded)', lg_auto:'Always active', lg_rs:'Needs redstone',
+    lg_rsb:'Redstone block', lg_btn:'Button', lg_order:'line = run order', cond_s:'cond', auto_s:'always', rs_s:'needs RS',
+    th_n:'#', th_type:'Type', th_cmd:'Command', th_pos:'Position', th_face:'Facing', th_flags:'Settings',
+    t_impulse:'Impulse', t_chain:'Chain', t_repeat:'Repeat', l_type:'Type', l_cmd:'Command', l_cond:'Conditional', l_auto:'Power',
+    a_default:(d)=>`As the type (${d})`, a_true:'Always active', a_false:'Needs redstone', l_bfacing:'Facing of this block (change it to turn)', l_pos:'Exact position (x y z; empty = continue the line)',
+    b_add_block:'+ Add block', blk_sel:(n)=>`Edit block ${n}`, no_blocks:'No blocks yet. Use "+ Add block".', only_runner_note:'',
+    help_st:'Actions for the test players, in order. Use it from a scenario with "Call a part".',
+    help_sc:'Runs from top to bottom. Blue-edged cards call a part (click to open it); the others are actions, commands and waits right here. Tick the boxes to run only some steps.',
+    s_call:'Call a part', s_do:'Player action', s_run:'Command', s_wait:'Wait', s_raw:'Other (JSON)',
+    add_call:'+ Call a part', add_do:'+ Player action', add_run:'+ Command', add_wait:'+ Wait', no_steps:'No steps yet. Add one with the buttons below.',
+    call_sum:(l,k)=>`Call part "${l}" (${k})`, run_sum:(c,a)=>`/${c}` + (a ? ` (as ${a})` : ''), wait_sum:(s)=>`Wait ${s} s (tick functions and repeat blocks keep running)`,
+    raw_sum:'Step written as JSON', unknown_mod:(id)=>`Unknown part "${id}"`, steps_n:(a,b)=>a===b?`step ${a}`:`steps ${a}–${b}`, chk_title:'Checked steps go into "Run checked steps only"',
+    l_skind:'Step kind', l_module:'Part to call', l_player:'Player', l_action:'Action', l_as:'Run as (empty = the server)', l_secs:'Seconds', l_wait_after:'Wait after (s)',
+    expect:'What to check', e_output_contains:'Server reply contains', e_output_regex:'Reply matches regex', e_seen_by:'Seen by', e_seen_contains:'Text on screen',
+    e_died:'Who dies', e_hurt:'Who gets hurt', e_heard:'Sound heard', e_heard_by:'Heard by', e_allow_error:'Do not fail on an error reply',
+    x_output_contains:(v)=>`reply has "${v}"`, x_output_regex:(v)=>`reply /${v}/`, x_seen:(w,v)=>`${w||'someone'} sees "${v}"`, x_died:(v)=>`${v} dies`, x_hurt:(v)=>`${v} is hurt`, x_heard:(w,v)=>`${w||'someone'} hears ${v}`, x_allow_error:'errors ok',
+    act_chat:'Chat', act_command:'Type a command', act_move:'Move in a direction', act_goto:'Go to (pathfinding)', act_walk:'Walk straight', act_look_at:'Look at', act_attack:'Attack',
+    act_jump:'Jump', act_sneak:'Sneak', act_select:'Select hotbar slot', act_use:'Use held item', act_use_block:'Right-click a block', act_use_entity:'Right-click an entity',
+    act_dig:'Dig', act_place:'Place', act_click_slot:'Click a slot in a window', act_close_window:'Close window', act_drop:'Drop held item', act_respawn:'Respawn',
+    p_text:'Text', p_dir:'Direction', p_seconds:'Seconds', p_sprint:'Sprint', p_x:'x', p_y:'y', p_z:'z', p_range:'Range', p_target:'Target', p_times:'Times', p_chase:'Chase',
+    p_slot:'Slot', p_button:'Button (0=left 1=right)', p_mode:'Mode', p_on:'On', p_type:'Type (villager ...)', p_name:'Name', p_item:'Item',
+    d_forward:'forward', d_back:'back', d_left:'left', d_right:'right',
+    help_flow:'The selected scenario in the real order of execution, with parts opened up. The colored bars on the right are things that keep running in the background (tick functions, repeat command blocks) and show from when.',
+    fv_pick:'Scenario', fv_pre:'Load the data pack (once, before the run)', fv_load:(a)=>`Runs on load: ${a}`, fv_tickstart:(a)=>`Tick functions start: ${a}`,
+    fv_t:'Time (approx.)', fv_from:'From', fv_what:'What happens', fv_bg:'Background', fv_tick_h:'Functions that run every tick (20 times/s)', fv_tick_none:'No tick functions',
+    fv_rep_h:'Command blocks that keep running once placed (repeat)', fv_rep_none:'No repeat command blocks', fv_rep_from:(n)=>`placed at step ${n}, then keeps running`, fv_rep_never:'not placed in this scenario',
+    fv_load_h:'Functions that run once on load', fv_direct:'scenario step', fv_blocks:(n)=>`Place and run ${n} command blocks`, fv_fn:(n)=>`Run ${n} function lines`, fv_none:'No scenarios',
+    fv_mod_note:(l)=>`Order when only part "${l}" runs`, fv_err:'Cannot expand: ',
+    h_story:'What happened, step by step', h_screen:'How it looks in Minecraft', l_step:'Step', l_tab:'Holding Tab', h_table:'Step details', h_log:'Server log',
+    c_res:'Result', c_what:'What it does', c_cmd:'Command', c_reply:'Server reply / error location', c_seen:'What players saw',
+    ok:'OK', ng:'Failed', passed:(a,b)=>`${a} / ${b} steps passed`, saw:'seen', no_result:'No results yet. Press a "▶" button above; results and each player\'s screen appear here.',
+    screen_none:'Run with players online to see their screens here.', not_online:' — this player is not online', click_step:'Click to see this step on screen',
+    load_err_h:'Data pack load errors (function, line, reason)', running:'Running... (a few seconds to a minute)', ran:(a,b)=>`Done: ${a} / ${b} steps passed`,
+    err:'Error: ', loaded:(n)=>`Opened "${n}"`, saved:(p)=>`Saved: ${p}`, exported:(p)=>`Exported data pack: ${p}`,
+    check_ok:'No problems found', check_probs:'Problems that stop it running', check_lint:'Version check', no_sel_mod:'Select a part first', no_checked:'No steps are checked',
+    nothing_sel:'Select a part or a scenario on the left.', new_title:'New game', new_sc:'Scenario', new_fn:'New function', new_bl:'New command blocks', new_st:'New actions',
+    eff:'Effect ', below:'Below names: ', teamside:'Team sidebar: ', sounds:'Sounds: ', window:'Window', confirm_new:'Discard the current changes and start a new project?', confirm_open:'You have unsaved changes. Open anyway?',
+    sc_steps:(n)=>`${n} step${n===1?'':'s'}`, res_ok:(a,b)=>`✓ ${a}/${b}`, res_ng:(a,b)=>`✗ ${a}/${b}`, preview_more:(n)=>`...${n} more`,
+  },
+};
+const LANG = () => ($('lang').value === 'en' ? 'en' : 'ja');
+function t(k, ...a) { const v = I18N[LANG()][k]; if (v === undefined) return k; return typeof v === 'function' ? v(...a) : v; }
+
+function h(tag, attrs, ...kids) {
+  const el = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs || {})) {
+    if (v == null || v === false) continue;
+    if (k === 'class') el.className = v;
+    else if (k === 'style') el.style.cssText = v;
+    else if (k.startsWith('on')) el.addEventListener(k.slice(2), v);
+    else if (['value', 'checked', 'selected', 'disabled'].includes(k)) el[k] = v;
+    else el.setAttribute(k, v === true ? '' : v);
+  }
+  for (const c of kids.flat(Infinity)) { if (c == null || c === false) continue; el.appendChild(c instanceof Node ? c : document.createTextNode(String(c))); }
+  return el;
+}
+const NS = 'http://www.w3.org/2000/svg';
+function s(tag, attrs, ...kids) {
+  const el = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs || {})) { if (v == null) continue; if (k.startsWith('on')) el.addEventListener(k.slice(2), v); else el.setAttribute(k, v); }
+  for (const c of kids.flat()) { if (c == null) continue; el.appendChild(c instanceof Node ? c : document.createTextNode(String(c))); }
+  return el;
+}
+async function call(path, body) {
+  const r = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) });
+  const j = await r.json();
+  if (!r.ok) throw new Error(j.error || r.statusText);
+  return j;
+}
+
+// ---------------- state ----------------
+let P = null;               // the project being edited
+let NAME = '';               // its save name
+let SEL = null;              // {type:'module'|'scenario', id}
+let TAB = 'edit';
+let SELBLOCK = 0;            // selected command block in the blocks editor
+let DIRTY = false;
+let CHECK = null;            // last /api/project/check result
+let LAST = [];               // last run results
+let LASTRUN = null;          // {scenario, module, only, results}
+let LOADERR = [];
+let PROJECTS = [];
+const OPEN = new WeakSet();  // step cards whose form is open
+const CHECKED = new WeakSet();
+const ACTIONS = { chat:['text'], command:['text'], move:['dir', 'seconds', 'sprint'], goto:['x', 'y', 'z', 'range'], walk:['x', 'z', 'sprint'],
+  look_at:['target'], attack:['target', 'times', 'chase'], jump:[], sneak:['on'], select:['slot'], use:['seconds'], use_block:['x', 'y', 'z'],
+  use_entity:['target', 'type', 'name'], dig:['x', 'y', 'z'], place:['x', 'y', 'z', 'item'], click_slot:['slot', 'button', 'mode'], close_window:[], drop:[], respawn:[] };
+const BOOLP = new Set(['sprint', 'chase', 'on']);
+const NUMP = new Set(['seconds', 'x', 'y', 'z', 'range', 'times', 'slot', 'button', 'mode']);
+const PLAYERP = new Set(['target']);
+const EXPECTS = ['output_contains', 'output_regex', 'seen_by', 'seen_contains', 'died', 'hurt', 'heard', 'heard_by'];
+const DIRS = { east:[1, 0, 0], west:[-1, 0, 0], south:[0, 0, 1], north:[0, 0, -1], up:[0, 1, 0], down:[0, -1, 0] };
+const KCOL = { impulse:'#d9772b', chain:'#3f9b5a', repeat:'#7b55c7' };
+
+function dirty(on = true) { DIRTY = on; $('dirty').textContent = on ? t('unsaved') : ''; }
+function mods() { return (P && P.modules) || []; }
+function scens() { return (P && P.scenarios) || []; }
+function modById(id) { return mods().find((m) => m.id === id); }
+function scById(id) { return scens().find((x) => x.id === id); }
+function mlabel(m) { return (m && (m.label || m.id)) || ''; }
+function kindOf(m) { return (m && m.kind) || 'function'; }
+function players() { return (P && P.player_names) || []; }
+function status(msg, cls) { const el = $('pStatus'); el.textContent = msg || ''; el.className = 'status ' + (cls || ''); }
+
+// ---------------- command block layout (same as runner.layout / place_blocks) ----------------
+function btype(b, k) { return b.type || (k ? 'chain' : 'impulse'); }
+function bauto(b, k) { return b.auto !== undefined ? !!b.auto : btype(b, k) !== 'impulse'; }
+function layout(m) {
+  let [x, y, z] = m.origin || [0, -58, 10];
+  let f = m.facing || 'east';
+  return (m.blocks || []).map((b) => {
+    if (b.pos && b.pos.length === 3) [x, y, z] = b.pos;
+    f = b.facing || f;
+    const o = [x, y, z, f];
+    const d = DIRS[f] || DIRS.east;
+    x += d[0]; y += d[1]; z += d[2];
+    return o;
+  });
+}
+function autoTrigger(m) {
+  const f = (m.blocks || [])[0];
+  if (!f) return 'none';
+  return (f.type || 'impulse') !== 'chain' && !f.auto ? 'redstone_block' : 'none';
+}
+function trigger(m) { return m.trigger || autoTrigger(m); }
+
+// ---------------- expanded numbering (same as project.expand) ----------------
+function countSteps(step, depth = 0) {
+  if (!('call' in step)) return 1;
+  const m = modById(step.call);
+  if (!m || depth > 8) return 1;
+  if (kindOf(m) !== 'steps') return 1;
+  return (m.steps || []).reduce((a, x) => a + countSteps(x, depth + 1), 0);
+}
+function ranges(steps) { let n = 1; return steps.map((st) => { const c = countSteps(st); const r = [n, n + c - 1, c]; n += c; return r; }); }
+
+// ---------------- generic helpers ----------------
+function stepKind(st) { if ('call' in st) return 'call'; if (st.do) return 'do'; if ('run' in st) return 'run'; if (st.function || st.blocks) return 'raw'; return 'wait'; }
+function num(v) { const s2 = String(v).trim(); if (s2 === '') return undefined; const n = Number(s2); return Number.isFinite(n) ? n : s2; }
+function setKey(obj, k, v) { if (v === undefined || v === '' || v === null) delete obj[k]; else obj[k] = v; dirty(); }
+function move(arr, i, d) { const j = i + d; if (j < 0 || j >= arr.length) return false; [arr[i], arr[j]] = [arr[j], arr[i]]; dirty(); return true; }
+function uniqueId(base, list) { let id = base, n = 2; while (list.some((x) => x.id === id)) id = base + '_' + n++; return id; }
+function fnCalls(m) {
+  const ns = (P.namespace || 'game').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const out = new Set();
+  const lines = kindOf(m) === 'function' ? (m.lines || []) : kindOf(m) === 'blocks' ? (m.blocks || []).map((b) => b.cmd || '') : [];
+  for (const l of lines) for (const x of String(l).matchAll(new RegExp('function\\s+' + ns + ':([a-z0-9_./-]+)', 'g'))) out.add(x[1]);
+  return [...out];
+}
+function callersOf(id) {
+  const out = [];
+  for (const m of mods()) {
+    if (fnCalls(m).includes(id)) out.push({ type:'module', id:m.id, label:mlabel(m) });
+    if (kindOf(m) === 'steps' && (m.steps || []).some((x) => x.call === id)) out.push({ type:'module', id:m.id, label:mlabel(m) });
+  }
+  for (const sc of scens()) if ((sc.steps || []).some((x) => x.call === id)) out.push({ type:'scenario', id:sc.id, label:sc.label || sc.id });
+  return out;
+}
+function findingsFor(id) {
+  if (!CHECK) return [];
+  const f = (CHECK.lint || []).filter((x) => x.file === 'module ' + id);
+  const p = (CHECK.problems || []).filter((x) => x.includes(`module ${id}:`) || x.includes(`'${id}'`)).map((x) => ({ level:'error', line:0, message:x }));
+  return p.concat(f);
+}
+
+// ---------------- left lists ----------------
+function renderLists() {
+  const ml = $('modList'); ml.innerHTML = '';
+  mods().forEach((m, i) => {
+    const sel = SEL && SEL.type === 'module' && SEL.id === m.id;
+    const nf = findingsFor(m.id).filter((x) => x.level === 'error').length;
+    const hasRep = kindOf(m) === 'blocks' && (m.blocks || []).some((b, k) => btype(b, k) === 'repeat');
+    const li = h('li', { class: sel ? 'sel' : '', onclick: () => select('module', m.id) },
+      h('div', { class:'lt' }, h('span', { class:'lab' }, mlabel(m)),
+        h('span', { class:'badges' }, h('span', { class:'b ' + kindOf(m) }, t('k_' + kindOf(m))), m.tick ? h('span', { class:'b tick' }, t('tick')) : null,
+          m.load ? h('span', { class:'b load' }, t('load')) : null, hasRep ? h('span', { class:'b rep' }, t('t_repeat')) : null, nf ? h('span', { class:'b err' }, t('errs', nf)) : null)),
+      h('div', { class:'sub' }, (P.namespace || 'game') + ':' + m.id),
+      sel ? h('div', { class:'tools' },
+        h('button', { class:'mini', onclick:(e) => { e.stopPropagation(); if (move(P.modules, i, -1)) renderAll(); } }, '↑ ' + t('up')),
+        h('button', { class:'mini', onclick:(e) => { e.stopPropagation(); if (move(P.modules, i, 1)) renderAll(); } }, '↓ ' + t('down')),
+        h('button', { class:'mini', onclick:(e) => { e.stopPropagation(); delModule(m); } }, t('del'))) : null);
+    ml.appendChild(li);
+  });
+  const sl = $('scList'); sl.innerHTML = '';
+  scens().forEach((sc, i) => {
+    const sel = SEL && SEL.type === 'scenario' && SEL.id === sc.id;
+    const n = ranges(sc.steps || []).reduce((a, r) => a + r[2], 0);
+    let res = null;
+    if (LASTRUN && LASTRUN.scenario === sc.id && !LASTRUN.module) {
+      const okN = LASTRUN.results.filter((r) => r.ok).length;
+      res = h('span', { class: okN === LASTRUN.results.length ? 'ok' : 'ng', style:'font-size:12px' }, okN === LASTRUN.results.length ? t('res_ok', okN, LASTRUN.results.length) : t('res_ng', okN, LASTRUN.results.length));
+    }
+    sl.appendChild(h('li', { class: sel ? 'sel' : '', onclick: () => select('scenario', sc.id) },
+      h('div', { class:'lt' }, h('span', { class:'lab' }, sc.label || sc.id), h('span', { class:'badges' }, res, h('span', { class:'pill' }, t('sc_steps', n)))),
+      h('div', { class:'sub' }, sc.id),
+      sel ? h('div', { class:'tools' },
+        h('button', { class:'mini', onclick:(e) => { e.stopPropagation(); if (move(P.scenarios, i, -1)) renderAll(); } }, '↑ ' + t('up')),
+        h('button', { class:'mini', onclick:(e) => { e.stopPropagation(); if (move(P.scenarios, i, 1)) renderAll(); } }, '↓ ' + t('down')),
+        h('button', { class:'mini', onclick:(e) => { e.stopPropagation(); delScenario(sc); } }, t('del'))) : null));
+  });
+  const cur = $('runSc').value;
+  $('runSc').innerHTML = '';
+  for (const sc of scens()) $('runSc').appendChild(h('option', { value: sc.id }, sc.label || sc.id));
+  if (SEL && SEL.type === 'scenario') $('runSc').value = SEL.id; else if (cur && scById(cur)) $('runSc').value = cur;
+  updateOnly();
+}
+function select(type, id) { SEL = { type, id }; SELBLOCK = 0; if (TAB === 'res') TAB = 'edit'; renderAll(); setUrl(); }
+function setUrl() {
+  try {
+    const q = new URLSearchParams(location.search);
+    if (NAME) q.set('project', NAME);
+    q.delete('module'); q.delete('scenario');
+    if (SEL) q.set(SEL.type, SEL.id);
+    q.set('lang', LANG());
+    history.replaceState(null, '', '?' + q.toString());
+  } catch (e) { /* ignore */ }
+}
+function delModule(m) {
+  if (!confirm(t('confirm_del', mlabel(m)))) return;
+  P.modules = P.modules.filter((x) => x !== m); dirty();
+  SEL = P.modules[0] ? { type:'module', id:P.modules[0].id } : (scens()[0] ? { type:'scenario', id:scens()[0].id } : null);
+  renderAll();
+}
+function delScenario(sc) {
+  if (!confirm(t('confirm_del', sc.label || sc.id))) return;
+  P.scenarios = P.scenarios.filter((x) => x !== sc); dirty();
+  SEL = scens()[0] ? { type:'scenario', id:scens()[0].id } : null;
+  renderAll();
+}
+function addModule(kind) {
+  const base = { function:'func', blocks:'blocks', steps:'actions' }[kind];
+  const m = { id: uniqueId(base, mods()), label: t({ function:'new_fn', blocks:'new_bl', steps:'new_st' }[kind]), kind };
+  if (kind === 'function') m.lines = ['say hello'];
+  if (kind === 'blocks') { m.origin = [0, -58, 10]; m.facing = 'east'; m.blocks = [{ type:'impulse', cmd:'say hello' }]; }
+  if (kind === 'steps') m.steps = [{ player: players()[0] || 'Tester1', do:'chat', text:'hello' }];
+  P.modules.push(m); dirty(); select('module', m.id);
+}
+function renameId(obj, isModule, newId) {
+  newId = newId.trim();
+  const list = isModule ? mods() : scens();
+  if (newId === obj.id) return true;
+  if (!/^[a-z0-9_./-]+$/.test(newId)) { status(t('id_bad'), 'ng'); return false; }
+  if (list.some((x) => x.id === newId)) { status(t('id_dup'), 'ng'); return false; }
+  const old = obj.id; obj.id = newId; let n = 0;
+  if (isModule) {
+    const fix = (steps) => (steps || []).forEach((st) => { if (st.call === old) { st.call = newId; n++; } });
+    scens().forEach((sc) => fix(sc.steps)); mods().forEach((m) => { if (kindOf(m) === 'steps') fix(m.steps); });
+    const ns = P.namespace || 'game';
+    const re = new RegExp('(function\\s+' + ns.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ':)' + old.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?![a-z0-9_./-])', 'g');
+    for (const m of mods()) {
+      if (m.lines) m.lines = m.lines.map((l) => l.replace(re, (a, p1) => { n++; return p1 + newId; }));
+      if (m.blocks) m.blocks.forEach((b) => { if (b.cmd) b.cmd = b.cmd.replace(re, (a, p1) => { n++; return p1 + newId; }); });
+    }
+  }
+  if (SEL && SEL.id === old) SEL.id = newId;
+  dirty(); status(t('renamed', old, newId, n), 'ok'); return true;
+}
+
+// ---------------- editors ----------------
+function renderEditor() {
+  const pane = $('paneEdit'); pane.innerHTML = '';
+  if (!P || !SEL) { pane.appendChild(h('div', { class:'empty' }, t('nothing_sel'))); return; }
+  if (SEL.type === 'scenario') { const sc = scById(SEL.id); if (sc) renderScenarioEditor(pane, sc); return; }
+  const m = modById(SEL.id); if (!m) { pane.appendChild(h('div', { class:'empty' }, t('nothing_sel'))); return; }
+  pane.appendChild(headerFields(m, true));
+  const k = kindOf(m);
+  if (k === 'function') renderFunctionEditor(pane, m);
+  else if (k === 'blocks') renderBlocksEditor(pane, m);
+  else renderStepsEditor(pane, m);
+  const callers = callersOf(m.id);
+  pane.appendChild(h('div', { class:'chips', style:'margin-top:10px' }, h('b', { style:'font-size:12px;color:var(--sub)' }, t('called_by') + ':'),
+    callers.length ? callers.map((c) => h('span', { class:'chip', onclick:() => select(c.type, c.id) }, (c.type === 'scenario' ? '▶ ' : '') + c.label)) : h('span', { class:'status' }, t('none'))));
+}
+function headerFields(obj, isModule) {
+  const idIn = h('input', { class:'mono', value: obj.id, onchange:(e) => { if (renameId(obj, isModule, e.target.value)) renderAll(); else e.target.value = obj.id; } });
+  return h('div', {},
+    h('div', { class:'edhead' },
+      h('div', {}, h('label', { class:'f' }, t('l_label')), h('input', { value: obj.label || '', oninput:(e) => { setKey(obj, 'label', e.target.value); renderLists(); } })),
+      h('div', {}, h('label', { class:'f' }, t('l_id')), idIn),
+      isModule ? h('div', {}, h('span', { class:'b ' + kindOf(obj), style:'font-size:12px;padding:3px 10px' }, t('k_' + kindOf(obj)))) : h('span')),
+    isModule ? h('div', {}, h('label', { class:'f' }, t('l_note')), h('input', { value: obj.note || '', oninput:(e) => setKey(obj, 'note', e.target.value) })) : null);
+}
+
+// function: a line editor with numbers
+function renderFunctionEditor(pane, m) {
+  pane.appendChild(h('p', { class:'help', style:'margin-top:8px' }, t('help_fn')));
+  pane.appendChild(h('div', { class:'row', style:'margin:0 0 6px' },
+    h('label', { class:'check' }, h('input', { type:'checkbox', checked: !!m.tick, onchange:(e) => { setKey(m, 'tick', e.target.checked || undefined); renderLists(); } }), t('l_tick')),
+    h('label', { class:'check' }, h('input', { type:'checkbox', checked: !!m.load, onchange:(e) => { setKey(m, 'load', e.target.checked || undefined); renderLists(); } }), t('l_load'))));
+  const fnd = findingsFor(m.id);
+  const gut = h('div', { class:'gut' }); const inner = h('div'); gut.appendChild(inner);
+  const ta = h('textarea', { spellcheck:'false', wrap:'off' });
+  ta.value = (m.lines || []).join('\n');
+  const paint = () => {
+    const n = ta.value.split('\n').length; inner.innerHTML = '';
+    for (let i = 1; i <= n; i++) {
+      const f = fnd.find((x) => x.line === i);
+      inner.appendChild(h('div', { class: f ? (f.level === 'error' ? 'bad' : 'wn') : '', title: f ? f.message : null }, i));
+    }
+    inner.style.transform = `translateY(${-ta.scrollTop}px)`;
+    cnt.textContent = `${(m.lines || []).filter((l) => l.trim() && !l.trim().startsWith('#')).length} ${t('fn_lines')}`;
+  };
+  const cnt = h('span', { class:'status' });
+  ta.addEventListener('input', () => { m.lines = ta.value.split('\n'); dirty(); paint(); });
+  ta.addEventListener('scroll', () => { inner.style.transform = `translateY(${-ta.scrollTop}px)`; });
+  ta.addEventListener('change', () => { m.lines = ta.value.split('\n').map((l) => l.replace(/\s+$/, '')).filter((l, i, a) => l !== '' || i < a.length - 1); renderLists(); });
+  pane.appendChild(h('div', { class:'code' }, gut, ta));
+  paint();
+  pane.appendChild(h('div', { class:'row', style:'justify-content:space-between;margin-top:6px' }, cnt,
+    h('div', { class:'chips' }, h('b', { style:'font-size:12px;color:var(--sub)' }, t('calls_out') + ':'),
+      fnCalls(m).length ? fnCalls(m).map((id) => h('span', { class:'chip', onclick:() => modById(id) && select('module', id) }, '→ ' + (modById(id) ? mlabel(modById(id)) : id))) : h('span', { class:'status' }, t('none')))));
+  if (fnd.length) pane.appendChild(h('ul', { class:'findings' }, fnd.map((f) => h('li', { class: f.level === 'error' ? 'ng' : 'warn' }, (f.line ? `L${f.line}: ` : '') + f.message))));
+}
+
+// blocks: top view + side view + list + form
+function renderBlocksEditor(pane, m) {
+  m.blocks = m.blocks || [];
+  if (SELBLOCK >= m.blocks.length) SELBLOCK = Math.max(0, m.blocks.length - 1);
+  pane.appendChild(h('p', { class:'help', style:'margin-top:8px' }, t('help_bl')));
+  const o = m.origin || [0, -58, 10];
+  const re = () => renderEditor();
+  const facingSel = (val, onch, inherit) => h('select', { onchange: onch },
+    inherit ? h('option', { value:'', selected: !val }, t('f_inherit')) : null,
+    Object.keys(DIRS).map((d) => h('option', { value:d, selected: val === d }, t('f_' + d))));
+  const at = autoTrigger(m);
+  pane.appendChild(h('div', { class:'grid4' },
+    h('div', {}, h('label', { class:'f' }, t('l_origin')), h('div', { class:'row', style:'flex-wrap:nowrap;gap:4px' },
+      [0, 1, 2].map((k) => h('input', { class:'mono', type:'number', value: o[k], onchange:(e) => { const v = (m.origin || [0, -58, 10]).slice(); v[k] = Number(e.target.value) || 0; setKey(m, 'origin', v); re(); } })))),
+    h('div', {}, h('label', { class:'f' }, t('l_facing')), facingSel(m.facing || 'east', (e) => { setKey(m, 'facing', e.target.value); re(); })),
+    h('div', {}, h('label', { class:'f' }, t('l_trigger')), h('select', { onchange:(e) => { setKey(m, 'trigger', e.target.value || undefined); re(); } },
+      h('option', { value:'', selected: !m.trigger }, t('tr_auto', t('tr_' + at))),
+      ['redstone_block', 'button', 'none'].map((v) => h('option', { value:v, selected: m.trigger === v }, t('tr_' + v))))),
+    h('div', {}, h('label', { class:'f' }, t('l_wait')), h('div', { class:'row', style:'flex-wrap:nowrap' },
+      h('input', { type:'number', step:'0.1', value: m.wait ?? '', placeholder:'1', style:'width:80px', onchange:(e) => setKey(m, 'wait', num(e.target.value)) }),
+      h('label', { class:'check' }, h('input', { type:'checkbox', checked: !!m.cleanup, onchange:(e) => setKey(m, 'cleanup', e.target.checked || undefined) }), t('l_cleanup'))))));
+
+  const spots = layout(m);
+  const views = h('div', { class:'views' });
+  if (m.blocks.length) {
+    views.appendChild(blockView(m, spots, 'top'));
+    views.appendChild(blockView(m, spots, 'side'));
+  }
+  pane.appendChild(views);
+  pane.appendChild(h('div', { class:'legend' },
+    h('span', {}, h('span', { class:'sw', style:'background:var(--imp)' }), t('lg_imp')), h('span', {}, h('span', { class:'sw', style:'background:var(--chn)' }), t('lg_chn')),
+    h('span', {}, h('span', { class:'sw', style:'background:var(--rep)' }), t('lg_rep')),
+    h('span', {}, h('span', { class:'sw', style:'background:#fff;border:2px solid #222;text-align:center;font-size:9px;line-height:10px;color:#222' }, '?'), t('lg_cond')),
+    h('span', {}, h('span', { class:'sw', style:'background:transparent;border:2px solid #2f7d4a' }), t('lg_auto')),
+    h('span', {}, h('span', { class:'sw', style:'background:transparent;border:2px dashed var(--rs)' }), t('lg_rs')),
+    h('span', {}, h('span', { class:'sw', style:'background:var(--rs)' }), t('lg_rsb')), h('span', {}, h('span', { class:'sw', style:'background:#9a9a9a;height:7px' }), t('lg_btn')),
+    h('span', {}, '— ' + t('lg_order'))));
+
+  // list
+  const tb = h('tbody');
+  m.blocks.forEach((b, k) => {
+    const [x, y, z, f] = spots[k]; const ty = btype(b, k);
+    tb.appendChild(h('tr', { class: k === SELBLOCK ? 'sel' : '', onclick:() => { SELBLOCK = k; re(); } },
+      h('td', {}, h('span', { class:'sq ' + ty }, k + 1)), h('td', { style:'white-space:nowrap' }, t('t_' + ty)), h('td', {}, h('code', {}, b.cmd || '')),
+      h('td', { class:'mono', style:'white-space:nowrap' }, `${x} ${y} ${z}`), h('td', { style:'white-space:nowrap' }, t('f_' + f).split(' ')[0] + (b.facing ? ' ↻' : '')),
+      h('td', { style:'white-space:nowrap;font-size:12px' }, [b.conditional ? t('cond_s') : null, bauto(b, k) ? t('auto_s') : t('rs_s')].filter(Boolean).join(' · ')),
+      h('td', { style:'white-space:nowrap' },
+        h('button', { class:'mini', title:t('up'), onclick:(e) => { e.stopPropagation(); if (move(m.blocks, k, -1)) { SELBLOCK = k - 1; re(); } } }, '↑'),
+        h('button', { class:'mini', title:t('down'), onclick:(e) => { e.stopPropagation(); if (move(m.blocks, k, 1)) { SELBLOCK = k + 1; re(); } } }, '↓'),
+        h('button', { class:'mini', title:t('del'), onclick:(e) => { e.stopPropagation(); m.blocks.splice(k, 1); dirty(); re(); renderLists(); } }, '✕'))));
+  });
+  pane.appendChild(h('div', { style:'overflow-x:auto;margin-top:10px' }, h('table', { id:'blkTable' },
+    h('thead', {}, h('tr', {}, ['th_n', 'th_type', 'th_cmd', 'th_pos', 'th_face', 'th_flags'].map((k) => h('th', {}, t(k))), h('th'))), tb)));
+  if (!m.blocks.length) pane.appendChild(h('div', { class:'empty' }, t('no_blocks')));
+  pane.appendChild(h('div', { class:'addrow' }, h('button', { class:'mini', onclick:() => { m.blocks.push({ type:'chain', cmd:'' }); SELBLOCK = m.blocks.length - 1; dirty(); re(); } }, t('b_add_block'))));
+
+  // form for the selected block
+  const b = m.blocks[SELBLOCK];
+  if (b) {
+    const k = SELBLOCK; const ty = btype(b, k);
+    pane.appendChild(h('div', { class:'bform' },
+      h('h3', { style:'margin:0 0 4px' }, h('span', { class:'sq ' + ty, style:'margin-right:6px' }, k + 1), t('blk_sel', k + 1), h('span', { class:'mono', style:'color:var(--sub);margin-left:8px;font-weight:400' }, spots[k].slice(0, 3).join(' '))),
+      h('div', { class:'grid4' },
+        h('div', {}, h('label', { class:'f' }, t('l_type')), h('select', { onchange:(e) => { b.type = e.target.value; dirty(); re(); renderLists(); } },
+          ['impulse', 'chain', 'repeat'].map((v) => h('option', { value:v, selected: ty === v }, t('t_' + v))))),
+        h('div', {}, h('label', { class:'f' }, t('l_auto')), h('select', { onchange:(e) => { const v = e.target.value; setKey(b, 'auto', v === '' ? undefined : v === 'true'); re(); } },
+          h('option', { value:'', selected: b.auto === undefined }, t('a_default', ty === 'impulse' ? t('a_false') : t('a_true'))),
+          h('option', { value:'true', selected: b.auto === true }, t('a_true')), h('option', { value:'false', selected: b.auto === false }, t('a_false')))),
+        h('div', {}, h('label', { class:'f' }, t('l_bfacing')), facingSel(b.facing, (e) => { setKey(b, 'facing', e.target.value || undefined); re(); }, true)),
+        h('div', {}, h('label', { class:'f' }, ' '), h('label', { class:'check' }, h('input', { type:'checkbox', checked: !!b.conditional, onchange:(e) => { setKey(b, 'conditional', e.target.checked || undefined); re(); } }), t('l_cond')))),
+      h('label', { class:'f' }, t('l_cmd')),
+      h('textarea', { spellcheck:'false', style:'min-height:56px', value: b.cmd || '', oninput:(e) => { b.cmd = e.target.value; dirty(); const c = $('blkTable').querySelectorAll('tbody tr')[k]; if (c) c.children[2].firstChild.textContent = b.cmd; }, onchange:() => renderLists() }),
+      h('label', { class:'f' }, t('l_pos')),
+      h('input', { class:'mono', style:'max-width:220px', value: b.pos ? b.pos.join(' ') : '', placeholder:'', onchange:(e) => {
+        const v = e.target.value.trim().split(/[\s,]+/).filter(Boolean).map(Number);
+        setKey(b, 'pos', v.length === 3 && v.every(Number.isFinite) ? v : undefined); re(); } })));
+  }
+}
+
+function glyph(f, view, axis) {
+  if (view === 'top') return { east:'→', west:'←', south:'↓', north:'↑', up:'⊙', down:'⊗' }[f];
+  if (axis === 'x') return { east:'→', west:'←', up:'↑', down:'↓', south:'⊙', north:'⊗' }[f];
+  return { south:'→', north:'←', up:'↑', down:'↓', west:'⊙', east:'⊗' }[f];
+}
+function blockView(m, spots, view) {
+  const C = 54, PAD = 26;
+  const trig = trigger(m);
+  const [x0, y0, z0, f0] = spots[0];
+  const d0 = DIRS[f0] || DIRS.east;
+  const rsPos = trig === 'redstone_block' ? [x0 - d0[0], y0 - d0[1], z0 - d0[2]] : null;
+  const btnPos = trig === 'button' ? [x0, y0 + 1, z0] : null;
+  const xs = spots.map((p) => p[0]), ys = spots.map((p) => p[1]), zs = spots.map((p) => p[2]);
+  for (const p of [rsPos, btnPos]) if (p) { xs.push(p[0]); ys.push(p[1]); zs.push(p[2]); }
+  const ext = (a) => Math.max(...a) - Math.min(...a);
+  const axis = ext(zs) > ext(xs) ? 'z' : 'x';
+  // map world -> grid (col,row) and a depth used to offset overlapping blocks
+  let H, V, dep, hLabel, vLabel;
+  if (view === 'top') { H = (p) => p[0]; V = (p) => p[2]; dep = (p) => p[1]; hLabel = 'X'; vLabel = 'Z'; }
+  else if (axis === 'x') { H = (p) => p[0]; V = (p) => -p[1]; dep = (p) => p[2]; hLabel = 'X'; vLabel = 'Y'; }
+  else { H = (p) => p[2]; V = (p) => -p[1]; dep = (p) => -p[0]; hLabel = 'Z'; vLabel = 'Y'; }
+  const all = spots.map((p) => p.slice(0, 3)).concat([rsPos, btnPos].filter(Boolean));
+  const hmin = Math.min(...all.map(H)), hmax = Math.max(...all.map(H)), vmin = Math.min(...all.map(V)), vmax = Math.max(...all.map(V));
+  const cols = hmax - hmin + 1, rows = vmax - vmin + 1;
+  const W = PAD + cols * C + 10, Hh = PAD + rows * C + 10;
+  // overlapping cells: offset by depth order
+  const cellKey = (p) => H(p) + ',' + V(p);
+  const stack = {};
+  all.forEach((p) => { const k = cellKey(p); (stack[k] = stack[k] || []).push(dep(p)); });
+  for (const k in stack) stack[k] = [...new Set(stack[k])].sort((a, b) => a - b);
+  const pos = (p) => { const k = cellKey(p); const i = stack[k].indexOf(dep(p)); const off = i * 13; return [PAD + (H(p) - hmin) * C + off, PAD + (V(p) - vmin) * C - off]; };
+  const svg = s('svg', { viewBox: `0 0 ${W + 14} ${Hh + 14}`, role:'img', style: `width:min(100%, ${Math.round((W + 14) * 1.5)}px)` });
+  svg.appendChild(s('defs', {}, s('marker', { id:'ar' + view, viewBox:'0 0 10 10', refX:'8', refY:'5', markerWidth:'6', markerHeight:'6', orient:'auto-start-reverse' }, s('path', { d:'M0,0 L10,5 L0,10 z', fill:'#888' }))));
+  // grid + axis labels
+  for (let c = 0; c < cols; c++) {
+    svg.appendChild(s('text', { x: PAD + c * C + C / 2, y: 14, 'text-anchor':'middle', 'font-size':'10', fill:'#888', 'font-family':'ui-monospace,Consolas,monospace' }, (view !== 'top' && axis === 'z') ? (hmin + c) : (hmin + c)));
+    for (let r = 0; r < rows; r++) svg.appendChild(s('rect', { x: PAD + c * C, y: PAD + r * C, width: C, height: C, fill:'none', stroke:'rgba(127,127,127,.18)' }));
+  }
+  for (let r = 0; r < rows; r++) svg.appendChild(s('text', { x: PAD - 4, y: PAD + r * C + C / 2 + 3, 'text-anchor':'end', 'font-size':'10', fill:'#888', 'font-family':'ui-monospace,Consolas,monospace' }, view === 'top' ? (vmin + r) : -(vmin + r)));
+  svg.appendChild(s('text', { x: 2, y: 12, 'font-size':'10', fill:'#888', 'font-weight':'bold' }, hLabel + '→'));
+  svg.appendChild(s('text', { x: 2, y: 24, 'font-size':'10', fill:'#888', 'font-weight':'bold' }, view === 'top' ? vLabel + '↓' : vLabel + '↑'));
+  // trigger
+  if (rsPos) { const [px, py] = pos(rsPos); svg.appendChild(s('g', {}, s('rect', { x: px + 4, y: py + 4, width: C - 8, height: C - 8, rx: 3, fill:'#c62828', stroke:'#7f0000', 'stroke-width':2 }),
+    s('text', { x: px + C / 2, y: py + C / 2 + 4, 'text-anchor':'middle', 'font-size':'11', fill:'#fff', 'font-weight':'bold' }, 'RS'), s('title', {}, t('lg_rsb')))); }
+  // order line
+  const centers = spots.map((p) => { const [px, py] = pos(p.slice(0, 3)); return [px + C / 2, py + C / 2]; });
+  if (centers.length > 1) svg.appendChild(s('polyline', { points: centers.map((c) => c.join(',')).join(' '), fill:'none', stroke:'#888', 'stroke-width':2, 'stroke-dasharray':'4 3' }));
+  // blocks, back to front by depth
+  const order = spots.map((p, k) => k).sort((a, b) => dep(spots[a]) - dep(spots[b]));
+  for (const k of order) {
+    const b = m.blocks[k]; const p = spots[k]; const ty = btype(b, k); const au = bauto(b, k);
+    const [px, py] = pos(p.slice(0, 3));
+    const g = s('g', { class:'blk', onclick:() => { SELBLOCK = k; renderEditor(); } });
+    g.appendChild(s('rect', { x: px + 3, y: py + 3, width: C - 6, height: C - 6, rx: 4, fill: KCOL[ty], stroke: au ? '#1f5f35' : '#c62828', 'stroke-width': 3, 'stroke-dasharray': au ? null : '5 3' }));
+    g.appendChild(s('rect', { x: px + 9, y: py + 9, width: C - 18, height: C - 18, rx: 2, fill:'rgba(0,0,0,.18)' }));
+    g.appendChild(s('text', { x: px + C / 2, y: py + C / 2 + 7, 'text-anchor':'middle', 'font-size':'20', fill:'#fff', 'font-weight':'bold' }, glyph(p[3], view, axis)));
+    g.appendChild(s('text', { x: px + 7, y: py + 16, 'font-size':'10', fill:'#fff', 'font-weight':'bold' }, String(k + 1)));
+    if (b.conditional) g.appendChild(s('g', {}, s('rect', { x: px + C - 19, y: py + 6, width: 13, height: 13, rx: 2, fill:'#fff', stroke:'#222' }), s('text', { x: px + C - 12.5, y: py + 16, 'text-anchor':'middle', 'font-size':'10', fill:'#222', 'font-weight':'bold' }, '?')));
+    if (!au) g.appendChild(s('circle', { cx: px + C - 11, cy: py + C - 11, r: 4, fill:'#ff3d3d', stroke:'#fff' }));
+    if (k === SELBLOCK) g.appendChild(s('rect', { x: px, y: py, width: C, height: C, rx: 6, fill:'none', stroke:'#2b7cff', 'stroke-width': 3 }));
+    g.appendChild(s('title', {}, `${k + 1}. ${t('t_' + ty)} (${p.slice(0, 3).join(' ')}) ${t('f_' + p[3])}${b.conditional ? ' · ' + t('lg_cond') : ''} · ${au ? t('lg_auto') : t('lg_rs')}\n${b.cmd || ''}`));
+    svg.appendChild(g);
+  }
+  if (btnPos) {
+    const [px, py] = pos(btnPos);
+    const btn = view === 'top' ? s('rect', { x: px + C / 2 - 9, y: py + C / 2 - 6, width: 18, height: 12, rx: 2, fill:'#9a9a9a', stroke:'#333', 'stroke-width':1.5 })
+      : s('rect', { x: px + C / 2 - 12, y: py + C - 9, width: 24, height: 7, rx: 1, fill:'#9a9a9a', stroke:'#333', 'stroke-width':1.5 });
+    svg.appendChild(s('g', {}, btn, s('title', {}, t('lg_btn') + ` (${btnPos.join(' ')})`)));
+  }
+  const title = view === 'top' ? t('v_top') : t('v_side', axis === 'x' ? 'X' : 'Z');
+  return h('div', { class:'view' }, h('h3', {}, title), h('p', { class:'vh' }, view === 'top' ? t('v_top_h') : t('v_side_h')), svg);
+}
+
+// steps (player actions) and scenarios share the card flow
+function renderStepsEditor(pane, m) {
+  m.steps = m.steps || [];
+  pane.appendChild(h('p', { class:'help', style:'margin-top:8px' }, t('help_st')));
+  pane.appendChild(stepFlow(m.steps, false, () => renderEditor()));
+}
+function renderScenarioEditor(pane, sc) {
+  sc.steps = sc.steps || [];
+  pane.appendChild(headerFields(sc, false));
+  pane.appendChild(h('p', { class:'help', style:'margin-top:8px' }, t('help_sc')));
+  pane.appendChild(stepFlow(sc.steps, true, () => { renderEditor(); renderLists(); }, sc));
+}
+function summary(st) {
+  const k = stepKind(st);
+  if (k === 'call') { const m = modById(st.call); return m ? t('call_sum', mlabel(m), t('k_' + kindOf(m))) : t('unknown_mod', st.call); }
+  if (k === 'run') return t('run_sum', st.run || '', st.as);
+  if (k === 'wait') return t('wait_sum', st.wait ?? 1);
+  if (k === 'do') {
+    const params = (ACTIONS[st.do] || []).filter((p) => st[p] !== undefined && st[p] !== '').map((p) => p === 'text' ? `「${st[p]}」` : (BOOLP.has(p) ? (st[p] ? t('p_' + p) : '') : `${t('p_' + p)}=${st[p]}`)).filter(Boolean).join(' ');
+    return `${st.player || '?'}: ${t('act_' + st.do)} ${params}`;
+  }
+  if (st.blocks) return t('fv_blocks', st.blocks.length);
+  if (st.function) return t('fv_fn', (Array.isArray(st.function) ? st.function : String(st.function).split('\n')).length);
+  return t('raw_sum');
+}
+function expectChips(st) {
+  const e = st.expect || {}; const out = [];
+  if (e.output_contains) out.push(t('x_output_contains', e.output_contains));
+  if (e.output_regex) out.push(t('x_output_regex', e.output_regex));
+  if (e.seen_contains) out.push(t('x_seen', e.seen_by, e.seen_contains));
+  if (e.died) out.push(t('x_died', e.died));
+  if (e.hurt) out.push(t('x_hurt', e.hurt));
+  if (e.heard) out.push(t('x_heard', e.heard_by, e.heard));
+  if (e.allow_error) out.push(t('x_allow_error'));
+  return out;
+}
+function callPreview(m) {
+  if (!m) return null;
+  const k = kindOf(m);
+  if (k === 'function') { const ls = (m.lines || []).filter((l) => l.trim() && !l.startsWith('#')); return h('div', { class:'prev' }, ls.slice(0, 3).map((l) => h('span', { class:'cmd' }, l)), ls.length > 3 ? t('preview_more', ls.length - 3) : null); }
+  if (k === 'blocks') return h('div', { class:'prev' }, (m.blocks || []).map((b, i) => [i ? ' → ' : '', h('span', { class:'sq ' + btype(b, i), title: b.cmd }, i + 1)]), ' ', (m.blocks || [])[0] ? h('span', { class:'mono' }, ((m.blocks[0].cmd || '').slice(0, 50))) : null);
+  return h('div', { class:'prev' }, (m.steps || []).slice(0, 4).map((x) => h('div', {}, '• ' + summary(x))), (m.steps || []).length > 4 ? t('preview_more', m.steps.length - 4) : null);
+}
+let DRAG = null;
+function stepFlow(steps, checkable, rerender, sc) {
+  const box = h('div', { class:'flow' });
+  const rg = ranges(steps);
+  const resFor = (a, b) => (LASTRUN && sc && LASTRUN.scenario === sc.id && !LASTRUN.module) ? LASTRUN.results.filter((r) => r.i >= a && r.i <= b) : [];
+  if (!steps.length) box.appendChild(h('div', { class:'empty' }, t('no_steps')));
+  steps.forEach((st, i) => {
+    const k = stepKind(st);
+    const m = k === 'call' ? modById(st.call) : null;
+    const [a, b] = rg[i];
+    const rs = resFor(a, b);
+    const okN = rs.filter((r) => r.ok).length;
+    const sumEl = h('span', { class:'sum' }, summary(st));
+    const expEl = h('div', { class:'exp' }, expectChips(st).map((c) => h('span', {}, '✓ ' + c)));
+    const card = h('div', { class:`st ${k}${m ? ' ' + kindOf(m) : ''}${checkable && CHECKED.has(st) ? ' selrun' : ''}`, draggable:'true' },
+      h('div', { class:'top' },
+        h('span', { class:'handle', title:'drag' }, '⋮⋮'),
+        checkable ? h('input', { type:'checkbox', title: t('chk_title'), checked: CHECKED.has(st), onchange:(e) => { if (e.target.checked) CHECKED.add(st); else CHECKED.delete(st); card.classList.toggle('selrun', e.target.checked); updateOnly(); } }) : null,
+        h('span', { class:'num' }, t('steps_n', a, b)),
+        h('span', { class:'kind' }, t('s_' + k)),
+        sumEl,
+        rs.length ? h('span', { class:'res ' + (okN === rs.length ? 'ok' : 'ng') }, (okN === rs.length ? '✓ ' : '✗ ') + `${okN}/${rs.length}`) : null,
+        h('span', { class:'tools' },
+          m ? h('button', { class:'mini', onclick:() => select('module', m.id) }, t('open')) : null,
+          h('button', { class:'mini', onclick:() => { if (OPEN.has(st)) OPEN.delete(st); else OPEN.add(st); rerender(); } }, OPEN.has(st) ? t('close') : t('edit')),
+          h('button', { class:'mini', title:t('up'), onclick:() => { if (move(steps, i, -1)) rerender(); } }, '↑'),
+          h('button', { class:'mini', title:t('down'), onclick:() => { if (move(steps, i, 1)) rerender(); } }, '↓'),
+          h('button', { class:'mini', title:t('del'), onclick:() => { steps.splice(i, 1); dirty(); rerender(); } }, '✕'))),
+      k === 'call' ? callPreview(m) : null,
+      expEl);
+    const refresh = () => { sumEl.textContent = summary(st); expEl.innerHTML = ''; expectChips(st).forEach((c) => expEl.appendChild(h('span', {}, '✓ ' + c))); };
+    if (OPEN.has(st)) card.appendChild(h('div', { class:'body' }, stepForm(st, (newSt) => { steps[i] = newSt; OPEN.add(newSt); dirty(); rerender(); }, refresh, rerender)));
+    card.addEventListener('dragstart', (e) => { if (e.target !== card) return; DRAG = { steps, i }; card.classList.add('drag'); e.dataTransfer.effectAllowed = 'move'; try { e.dataTransfer.setData('text/plain', String(i)); } catch (x) { /* */ } });
+    card.addEventListener('dragend', () => card.classList.remove('drag'));
+    card.addEventListener('dragover', (e) => { if (DRAG && DRAG.steps === steps) { e.preventDefault(); card.classList.add('over'); } });
+    card.addEventListener('dragleave', () => card.classList.remove('over'));
+    card.addEventListener('drop', (e) => { e.preventDefault(); card.classList.remove('over'); if (!DRAG || DRAG.steps !== steps || DRAG.i === i) return; const [x] = steps.splice(DRAG.i, 1); steps.splice(i, 0, x); DRAG = null; dirty(); rerender(); });
+    // inputs inside the form should not start a drag
+    card.querySelectorAll('input,textarea,select').forEach((el) => { el.addEventListener('mousedown', () => { card.draggable = false; }); el.addEventListener('blur', () => { card.draggable = true; }); });
+    if (i) box.appendChild(h('div', { class:'arrow' }, '↓'));
+    box.appendChild(card);
+  });
+  const p0 = players()[0] || 'Tester1';
+  const add = (st) => { steps.push(st); OPEN.add(st); dirty(); rerender(); };
+  box.appendChild(h('div', { class:'addrow', style:'justify-content:center;margin-top:10px' },
+    h('button', { class:'mini', onclick:() => add({ call: (mods()[0] || {}).id || '' }) }, t('add_call')),
+    h('button', { class:'mini', onclick:() => add({ player: p0, do:'chat', text:'' }) }, t('add_do')),
+    h('button', { class:'mini', onclick:() => add({ run:'' }) }, t('add_run')),
+    h('button', { class:'mini', onclick:() => add({ wait: 1 }) }, t('add_wait'))));
+  return box;
+}
+function field(label, input, cls) { return h('div', { class: cls || '' }, h('label', { class:'f' }, label), input); }
+function playerInput(val, oninput) {
+  const id = 'pl_' + Math.random().toString(36).slice(2);
+  return [h('input', { list: id, value: val || '', oninput }), h('datalist', { id }, players().map((p) => h('option', { value:p })))];
+}
+function stepForm(st, replace, refresh, rerender) {
+  const k = stepKind(st);
+  const out = h('div');
+  const kindSel = h('select', { onchange:(e) => {
+    const nk = e.target.value; const base = {};
+    if (st.wait !== undefined && nk !== 'wait') base.wait = st.wait;
+    if (st.expect && nk !== 'wait' && nk !== 'call') base.expect = st.expect;
+    const p0 = players()[0] || 'Tester1';
+    const n = nk === 'call' ? { call: (mods()[0] || {}).id || '' } : nk === 'do' ? { player: p0, do:'chat', text:'', ...base } : nk === 'run' ? { run:'', ...base } : nk === 'wait' ? { wait: st.wait ?? 1 } : { ...st };
+    replace(n);
+  } }, ['call', 'do', 'run', 'wait', 'raw'].map((x) => h('option', { value:x, selected: x === k }, t('s_' + x))));
+  const top = h('div', { class:'grid4' }, field(t('l_skind'), kindSel));
+  out.appendChild(top);
+  const upd = (key, v) => { setKey(st, key, v); refresh(); };
+  if (k === 'call') {
+    top.appendChild(field(t('l_module'), h('select', { onchange:(e) => { st.call = e.target.value; dirty(); rerender(); } },
+      mods().map((m) => h('option', { value:m.id, selected: st.call === m.id }, `${mlabel(m)} (${t('k_' + kindOf(m))})`)),
+      modById(st.call) ? null : h('option', { value: st.call, selected:true }, t('unknown_mod', st.call)))));
+  } else if (k === 'wait') {
+    top.appendChild(field(t('l_secs'), h('input', { type:'number', step:'0.1', value: st.wait ?? 1, oninput:(e) => upd('wait', num(e.target.value)) })));
+  } else if (k === 'run') {
+    out.appendChild(field(t('l_cmd'), h('input', { class:'mono', value: st.run || '', placeholder:'say hello', oninput:(e) => { st.run = e.target.value.replace(/^\//, ''); dirty(); refresh(); } })));
+    const g = h('div', { class:'grid4' });
+    g.appendChild(field(t('l_as'), playerInput(st.as, (e) => upd('as', e.target.value.trim() || undefined))));
+    g.appendChild(field(t('l_wait_after'), h('input', { type:'number', step:'0.1', value: st.wait ?? '', placeholder:'0.3', oninput:(e) => upd('wait', num(e.target.value)) })));
+    out.appendChild(g);
+  } else if (k === 'do') {
+    top.appendChild(field(t('l_player'), playerInput(st.player, (e) => upd('player', e.target.value.trim()))));
+    top.appendChild(field(t('l_action'), h('select', { onchange:(e) => {
+      const keep = { player: st.player, do: e.target.value }; if (st.wait !== undefined) keep.wait = st.wait; if (st.expect) keep.expect = st.expect;
+      for (const p of ACTIONS[e.target.value]) if (st[p] !== undefined) keep[p] = st[p];
+      replace(keep); } }, Object.keys(ACTIONS).map((a) => h('option', { value:a, selected: st.do === a }, t('act_' + a))))));
+    top.appendChild(field(t('l_wait_after'), h('input', { type:'number', step:'0.1', value: st.wait ?? '', placeholder:'0.5', oninput:(e) => upd('wait', num(e.target.value)) })));
+    const ps = ACTIONS[st.do] || [];
+    if (ps.length) {
+      const g = h('div', { class:'grid4' });
+      for (const p of ps) {
+        if (BOOLP.has(p)) g.appendChild(field(' ', h('label', { class:'check' }, h('input', { type:'checkbox', checked: p === 'on' ? st.on !== false : !!st[p], onchange:(e) => upd(p, p === 'on' ? (e.target.checked ? undefined : false) : (e.target.checked || undefined)) }), t('p_' + p))));
+        else if (p === 'dir') g.appendChild(field(t('p_dir'), h('select', { onchange:(e) => upd('dir', e.target.value) }, ['forward', 'back', 'left', 'right'].map((d) => h('option', { value:d, selected: (st.dir || 'forward') === d }, t('d_' + d))))));
+        else if (PLAYERP.has(p)) g.appendChild(field(t('p_' + p), playerInput(st[p], (e) => upd(p, e.target.value.trim() || undefined))));
+        else g.appendChild(field(t('p_' + p), h('input', { class: p === 'text' ? 'mono' : '', type: NUMP.has(p) ? 'number' : 'text', step: NUMP.has(p) ? 'any' : null, value: st[p] ?? '', oninput:(e) => upd(p, NUMP.has(p) ? num(e.target.value) : (e.target.value || undefined)) }), p === 'text' ? '' : ''));
+      }
+      out.appendChild(g);
+    }
+  } else {
+    const ta = h('textarea', { spellcheck:'false', style:'min-height:100px' }); ta.value = JSON.stringify(st, null, 1);
+    ta.addEventListener('change', () => { try { replace(JSON.parse(ta.value)); } catch (e) { status(t('err') + e.message, 'ng'); } });
+    out.appendChild(ta);
+  }
+  if (k === 'run' || k === 'do' || k === 'call') {
+    const e = st.expect || {};
+    const setE = (key, v) => { const ex = { ...(st.expect || {}) }; if (v === undefined || v === '' || v === false) delete ex[key]; else ex[key] = v; setKey(st, 'expect', Object.keys(ex).length ? ex : undefined); refresh(); };
+    const g = h('div', { class:'grid4' });
+    for (const key of EXPECTS) {
+      const isP = ['seen_by', 'died', 'hurt', 'heard_by'].includes(key);
+      g.appendChild(field(t('e_' + key), isP ? playerInput(e[key], (ev) => setE(key, ev.target.value.trim())) : h('input', { class:'mono', value: e[key] || '', oninput:(ev) => setE(key, ev.target.value) })));
+    }
+    out.appendChild(h('details', { open: Object.keys(e).length ? true : null, style:'margin-top:8px' }, h('summary', { style:'cursor:pointer;font-size:13px;color:var(--sub)' }, t('expect')), g,
+      h('label', { class:'check', style:'margin-top:6px' }, h('input', { type:'checkbox', checked: !!e.allow_error, onchange:(ev) => setE('allow_error', ev.target.checked || undefined) }), t('e_allow_error'))));
+  }
+  return out;
+}
+
+// ---------------- flow view ----------------
+function bgInfo() {
+  const ticks = mods().filter((m) => kindOf(m) === 'function' && m.tick);
+  const loads = mods().filter((m) => kindOf(m) === 'function' && m.load);
+  return { ticks, loads };
+}
+function callTree(id, seen = new Set()) {
+  const m = modById(id); if (!m || seen.has(id)) return null;
+  seen.add(id);
+  const kids = fnCalls(m).map((c) => callTree(c, new Set(seen))).filter(Boolean);
+  return h('li', {}, h('span', { class:'chip', onclick:() => select('module', id) }, mlabel(m)), ' ', h('span', { class:'mono', style:'color:var(--sub)' }, id), kids.length ? h('ul', { class:'tree' }, kids) : null);
+}
+function stepTime(st) {
+  if (st.blocks) return Number(st.wait ?? 1);
+  if (st.do) return Number(st.wait ?? 0.5);
+  if (st.function) return Number(st.wait ?? 0.5);
+  if (st.run) return Number(st.wait ?? 0.3);
+  return Number(st.wait ?? 1);
+}
+async function renderFlow() {
+  const pane = $('paneFlow'); pane.innerHTML = '';
+  if (!P) return;
+  pane.appendChild(h('p', { class:'help' }, t('help_flow')));
+  const modMode = SEL && SEL.type === 'module';
+  const scId = SEL && SEL.type === 'scenario' ? SEL.id : ($('runSc').value || (scens()[0] || {}).id);
+  const pick = h('select', { style:'width:auto', onchange:(e) => select('scenario', e.target.value) }, scens().map((sc) => h('option', { value:sc.id, selected: !modMode && sc.id === scId }, sc.label || sc.id)));
+  if (modMode) pick.insertBefore(h('option', { selected:true, value:'' }, '— ' + t('fv_mod_note', mlabel(modById(SEL.id)))), pick.firstChild);
+  pane.appendChild(h('div', { class:'row', style:'margin-bottom:10px' }, h('b', {}, t('fv_pick')), pick));
+  if (!scens().length && !modMode) { pane.appendChild(h('div', { class:'empty' }, t('fv_none'))); return; }
+  let steps;
+  try { steps = (await call('/api/project/expand', modMode ? { project:P, module:SEL.id } : { project:P, scenario:scId })).steps; }
+  catch (e) { pane.appendChild(h('div', { class:'empty ng' }, t('fv_err') + e.message)); return; }
+  const { ticks, loads } = bgInfo();
+  // which scenario card each expanded step came from
+  const sc = modMode ? null : scById(scId);
+  const src = [];
+  if (sc) ranges(sc.steps || []).forEach(([a, b], ci) => { for (let n = a; n <= b; n++) src[n] = ci; });
+  // background lanes: tick functions from the start, repeat lines from where they are placed
+  const lanes = ticks.map((m) => ({ cls:'tick', label: t('tick') + ': ' + mlabel(m), from: 0 }));
+  const reps = [];
+  steps.forEach((st, i) => {
+    if (st.blocks && st.blocks.some((b, k) => btype(b, k) === 'repeat')) { lanes.push({ cls:'rep', label: t('t_repeat') + ': ' + (st._module || ''), from: i + 1 }); reps.push({ label: st._module || '', at: i + 1, blocks: st.blocks }); }
+  });
+  const tbl = h('table', { class:'tl' });
+  tbl.appendChild(h('thead', {}, h('tr', {}, h('th', {}, '#'), h('th', {}, t('fv_t')), h('th', {}, t('fv_from')), h('th', {}, t('fv_what')),
+    lanes.map((l, j) => h('th', { class:'lh', title: l.label }, h('span', { class:'lsw ' + l.cls }, j + 1))))));
+  const tb = h('tbody');
+  tb.appendChild(h('tr', { class:'pre' }, h('td', { class:'n' }, '0'), h('td', { class:'t' }, '0.0s'), h('td', {}, ''),
+    h('td', {}, h('b', {}, t('fv_pre')), loads.length ? h('div', {}, t('fv_load', loads.map(mlabel).join(', '))) : null, ticks.length ? h('div', {}, t('fv_tickstart', ticks.map(mlabel).join(', '))) : null),
+    lanes.map((l) => h('td', { class:'lane' }, l.from === 0 ? h('i', { class: l.cls + ' start' }) : null))));
+  let tm = 0;
+  const colors = ['#4a6fa5', '#2f8f8f', '#a5674a', '#6a5aa5', '#5f8a2f', '#a54a7a', '#8a7a2f'];
+  steps.forEach((st, i) => {
+    const n = i + 1;
+    const ci = src[n];
+    let from = null;
+    if (sc && ci !== undefined) {
+      const card = sc.steps[ci];
+      from = 'call' in card ? h('span', { class:'grp', style:`background:${colors[ci % colors.length]};cursor:pointer`, onclick:() => select('module', card.call) }, mlabel(modById(card.call)) || card.call)
+        : h('span', { class:'grp', style:'background:#777' }, t('fv_direct') + ' ' + (ci + 1));
+    } else if (st._module) from = h('span', { class:'grp', style:'background:#4a6fa5' }, st._module);
+    const k = st.blocks ? 'blocks' : st.do ? 'do' : st.function ? 'fn' : ('run' in st) ? 'run' : 'wait';
+    let what;
+    if (k === 'blocks') what = h('div', {}, h('b', {}, t('fv_blocks', st.blocks.length)), ' ', st.blocks.map((b, j) => [j ? '→' : '', h('span', { class:'sq ' + btype(b, j), title: b.cmd }, j + 1)]),
+      h('div', { class:'mono', style:'color:var(--sub);font-size:11.5px' }, st.blocks.map((b) => (b.cmd || '').slice(0, 40)).join('  →  ')));
+    else if (k === 'run') {
+      const m = /^function\s+[^:]+:([a-z0-9_./-]+)/.exec(st.run || '');
+      const sub = m && modById(m[1]) ? fnCalls(modById(m[1])) : [];
+      what = h('div', {}, h('code', { class:'cmd' }, '/' + st.run), st.as ? ` (${st.as})` : '', sub.length ? h('div', { style:'font-size:12px;color:var(--sub)' }, '↳ ' + sub.map((x) => mlabel(modById(x)) || x).join(', ')) : null);
+    } else what = h('div', {}, summary(st));
+    const ex = expectChips(st);
+    if (ex.length) what.appendChild(h('div', { style:'font-size:12px;color:var(--ok)' }, '✓ ' + ex.join(' / ')));
+    const res = LASTRUN && !LASTRUN.module && LASTRUN.scenario === scId && !modMode ? LASTRUN.results.find((r) => r.i === n) : null;
+    tb.appendChild(h('tr', { class: k === 'wait' ? 'waitrow' : '' },
+      h('td', { class:'n' }, res ? h('span', { class: res.ok ? 'ok' : 'ng' }, n) : n), h('td', { class:'t' }, tm.toFixed(1) + 's'), h('td', {}, from), h('td', { class:'d' }, what),
+      lanes.map((l) => h('td', { class:'lane' }, n >= l.from ? h('i', { class: l.cls + (n === l.from ? ' start' : '') }) : null))));
+    tm += stepTime(st);
+  });
+  tbl.appendChild(tb);
+  const left = h('div', { style:'overflow-x:auto' },
+    lanes.length ? h('div', { class:'lanes' }, h('b', {}, t('fv_bg') + ':'), lanes.map((l, j) => h('span', {}, h('span', { class:'lsw ' + l.cls }, j + 1), ' ' + l.label))) : null, tbl);
+  const right = h('div', {},
+    h('div', { class:'bg' }, h('h3', {}, h('span', { class:'b tick', style:'margin-right:6px' }, t('tick')), t('fv_tick_h')),
+      ticks.length ? h('ul', { class:'tree root' }, ticks.map((m) => callTree(m.id))) : h('div', { class:'status' }, t('fv_tick_none'))),
+    h('div', { class:'bg' }, h('h3', {}, h('span', { class:'b rep', style:'margin-right:6px' }, t('t_repeat')), t('fv_rep_h')),
+      (() => {
+        const all = mods().filter((m) => kindOf(m) === 'blocks' && (m.blocks || []).some((b, k) => btype(b, k) === 'repeat'));
+        if (!all.length) return h('div', { class:'status' }, t('fv_rep_none'));
+        return h('ul', { class:'tree root' }, all.map((m) => { const r = reps.find((x) => x.label === mlabel(m)); return h('li', {}, h('span', { class:'chip', onclick:() => select('module', m.id) }, mlabel(m)), ' ',
+          (m.blocks || []).map((b, j) => [j ? '→' : '', h('span', { class:'sq ' + btype(b, j), title: b.cmd }, j + 1)]),
+          h('div', { style:'font-size:12px;color:var(--sub)' }, r ? t('fv_rep_from', r.at) : t('fv_rep_never'))); }));
+      })()),
+    h('div', { class:'bg' }, h('h3', {}, h('span', { class:'b load', style:'margin-right:6px' }, t('load')), t('fv_load_h')),
+      loads.length ? h('ul', { class:'tree root' }, loads.map((m) => callTree(m.id))) : h('div', { class:'status' }, t('none'))));
+  pane.appendChild(h('div', { class:'fv' }, left, right));
+}
+
+// ---------------- run + results ----------------
+function updateOnly() {
+  const sc = scById($('runSc').value);
+  if (!sc) { $('runOnly').value = ''; return; }
+  const rg = ranges(sc.steps || []);
+  const parts = [];
+  (sc.steps || []).forEach((st, i) => { if (CHECKED.has(st)) parts.push(rg[i][0] === rg[i][1] ? String(rg[i][0]) : `${rg[i][0]}-${rg[i][1]}`); });
+  $('runOnly').value = parts.join(',');
+}
+async function run(kind, btn) {
+  const body = { project: P };
+  if (kind === 'module') { if (!SEL || SEL.type !== 'module') { $('runStatus').textContent = t('no_sel_mod'); return; } body.module = SEL.id; }
+  else body.scenario = $('runSc').value;
+  if (kind === 'only') { const o = $('runOnly').value.trim(); if (!o) { $('runStatus').textContent = t('no_checked'); return; } body.only = o; }
+  btn.disabled = true; $('runStatus').textContent = t('running'); $('runStatus').className = 'status';
+  try {
+    const j = await call('/api/project/run', body);
+    LAST = j.results || []; LOADERR = j.load_errors || [];
+    LASTRUN = { scenario: body.scenario, module: body.module, only: body.only, results: LAST };
+    const ok = LAST.filter((r) => r.ok).length;
+    $('runStatus').textContent = t('ran', ok, LAST.length); $('runStatus').className = 'status ' + (ok === LAST.length ? 'ok' : 'ng');
+    TAB = 'res'; $('scrStep').value = 1; renderAll();
+  } catch (e) { $('runStatus').textContent = t('err') + e.message; $('runStatus').className = 'status ng'; }
+  finally { btn.disabled = false; refreshStatus(); }
+}
+const BOSS = { pink:'#ff6fd8', blue:'#4aa3ff', red:'#ff4a4a', green:'#4aff6a', yellow:'#ffe14a', purple:'#b44aff', white:'#fff' };
+function mcText(el, tx) {
+  el.innerHTML = '';
+  let cls = 'cf';
+  for (const part of String(tx || '').split(/(§[0-9a-fk-or])/i)) {
+    const m = part.match(/^§([0-9a-f])$/i);
+    if (m) { cls = 'c' + m[1].toLowerCase(); continue; }
+    if (/^§[k-or]$/i.test(part) || !part) continue;
+    const sp = document.createElement('span'); sp.className = cls; sp.textContent = part; el.appendChild(sp);
+  }
+}
+function teamOf(scr, name) { return (scr.teams || []).find((x) => (x.members || []).includes(name)); }
+function mcPlain(x) { return String(x || '').replace(/§./g, ''); }
+function drawScreen() {
+  const en = LANG() === 'en';
+  const note = $('mcNote');
+  const has = LAST.some((r) => r.screens && r.screens.length);
+  $('mc').style.display = has ? '' : 'none';
+  if (!has) { note.textContent = t('screen_none'); return; }
+  $('scrStep').max = LAST.length;
+  const i = Math.min(+$('scrStep').value, LAST.length);
+  $('scrStepN').textContent = LAST[i - 1] ? LAST[i - 1].i : i;
+  const res = LAST[i - 1];
+  const names = (res.screens || []).map((x) => x.name);
+  if ($('scrPlayer').options.length !== names.length) $('scrPlayer').innerHTML = names.map((n) => `<option>${n.replace(/</g, '&lt;')}</option>`).join('');
+  const scr = (res.screens || []).find((x) => x.name === $('scrPlayer').value) || (res.screens || [])[0];
+  if (!scr) { note.textContent = ''; return; }
+  note.textContent = `${res.i}. ${en ? res.explain_en : res.explain_ja}` + (scr.online ? '' : t('not_online'));
+  $('mcBoss').innerHTML = '';
+  for (const b of scr.bossbars || []) {
+    const d = document.createElement('div'); const tt = document.createElement('div'); mcText(tt, b.title); d.appendChild(tt);
+    const bar = document.createElement('div'); bar.className = 'bar'; const f = document.createElement('div'); f.className = 'fill';
+    f.style.width = Math.round((b.health || 0) * 100) + '%'; f.style.background = BOSS[b.color] || '#ff6fd8'; bar.appendChild(f); d.appendChild(bar);
+    $('mcBoss').appendChild(d);
+  }
+  mcText($('mcTitle'), scr.title); mcText($('mcSub'), scr.subtitle); mcText($('mcAct'), scr.actionbar);
+  const side = $('mcSide'); side.innerHTML = ''; side.style.display = scr.sidebar ? '' : 'none';
+  if (scr.sidebar) {
+    const hd = document.createElement('div'); hd.className = 'h'; mcText(hd, scr.sidebar.title); side.appendChild(hd);
+    for (const it of scr.sidebar.items) { const r = document.createElement('div'); r.className = 'r'; const n = document.createElement('span'); mcText(n, it.name); const v = document.createElement('b'); v.textContent = it.score; r.append(n, v); side.appendChild(r); }
+  }
+  const tab = $('mcTab'); tab.innerHTML = ''; tab.style.display = $('scrTab').checked ? 'block' : 'none';
+  if (scr.tabHeader) { const d = document.createElement('div'); mcText(d, scr.tabHeader); tab.appendChild(d); }
+  for (const pl of scr.tab || []) { const tm = teamOf(scr, pl.name); const d = document.createElement('div'); mcText(d, (tm ? tm.prefix : '') + pl.name + (tm ? tm.suffix : '')); tab.appendChild(d); }
+  if (scr.tabFooter) { const d = document.createElement('div'); mcText(d, scr.tabFooter); tab.appendChild(d); }
+  const chat = $('mcChat'); chat.innerHTML = '';
+  for (const c of (scr.chat || []).slice(-6)) { const d = document.createElement('div'); mcText(d, c); chat.appendChild(d); }
+  const ex = $('mcExtra'); ex.innerHTML = '';
+  const line = (tx) => { const d = document.createElement('div'); mcText(d, tx); ex.appendChild(d); };
+  for (const e of scr.effects || []) line(t('eff') + `${e.name} ${e.level} (${e.seconds}s)`);
+  if (scr.belowName) line(t('below') + mcPlain(scr.belowName.title) + ' ' + (scr.belowName.scores || []).map((v) => `${v.name} ${v.score}`).join(' / '));
+  for (const tm of scr.teamSidebars || []) line(t('teamside') + mcPlain(tm.title));
+  if ((scr.sounds || []).length) line(t('sounds') + scr.sounds.slice(-4).map((v) => v.replace('minecraft:', '')).join(', '));
+  const win = $('mcWindow'); win.innerHTML = ''; win.style.display = scr.window ? 'block' : 'none';
+  if (scr.window) {
+    const tt = document.createElement('div'); mcText(tt, scr.window.title || t('window')); win.appendChild(tt);
+    const g = document.createElement('div'); g.className = 'slots';
+    const n = Math.max(9, Math.ceil(((scr.window.slots || []).reduce((mm, v) => Math.max(mm, v.slot), 0) + 1) / 9) * 9);
+    for (let kk = 0; kk < n; kk++) { const c = document.createElement('div'); const it = (scr.window.slots || []).find((v) => v.slot === kk); c.textContent = it ? `${kk}: ${(it.label || it.name).replace('minecraft:', '')}${it.count > 1 ? ' x' + it.count : ''}` : String(kk); g.appendChild(c); }
+    win.appendChild(g);
+  }
+  $('mcHud').textContent = scr.online ? `HP ${scr.health ?? '-'}  FOOD ${scr.food ?? '-'}  ${scr.gamemode || ''}${scr.held ? '  HAND ' + scr.held : ''}` : '-';
+}
+['scrStep', 'scrPlayer', 'scrTab'].forEach((id) => { $(id).addEventListener('input', drawScreen); $(id).addEventListener('change', drawScreen); });
+function openStep(k) {
+  $('scrStep').value = k + 1;
+  document.querySelectorAll('.story li, #results tbody tr').forEach((el) => el.classList.remove('sel'));
+  const li = $('story').children[k]; if (li) li.classList.add('sel');
+  const tr = $('results').querySelector('tbody').children[k]; if (tr) tr.classList.add('sel');
+  drawScreen();
+  $('screenWrap').scrollIntoView({ behavior:'smooth', block:'start' });
+}
+function renderResults() {
+  const en = LANG() === 'en';
+  const le = $('loadErr'); le.innerHTML = '';
+  if (LOADERR.length) le.appendChild(h('div', { class:'loaderr' }, h('b', { class:'ng' }, t('load_err_h')), h('ul', {}, LOADERR.map((x) => h('li', {}, x)))));
+  const tb = $('results').querySelector('tbody'); tb.innerHTML = '';
+  const story = $('story'); story.innerHTML = '';
+  if (!LAST.length) { $('summary').textContent = t('no_result'); $('screenWrap').style.display = 'none'; $('results').style.display = 'none'; return; }
+  $('screenWrap').style.display = ''; $('results').style.display = '';
+  let ok = 0;
+  LAST.forEach((r, k) => {
+    if (r.ok) ok++;
+    const what = en ? r.explain_en : r.explain_ja;
+    const where = en ? r.where_en : r.where_ja;
+    const li = h('li', { class: r.ok ? '' : 'ng', value: r.i, title: t('click_step'), onclick:() => openStep(k) },
+      `${what || r.command} — ${r.ok ? t('ok') : t('ng')}` + (r.ok ? '' : `: ${r.why || ''} ${where || ''}`) + ((r.seen || []).length ? ` (${t('saw')}: ${r.seen.slice(0, 3).join(' / ')})` : ''));
+    story.appendChild(li);
+    const tr = h('tr', { onclick:() => openStep(k) }, h('td', {}, r.i), h('td', {}, h('span', { class: r.ok ? 'ok' : 'ng' }, r.ok ? t('ok') : t('ng'))), h('td', {}, what || ''),
+      h('td', {}, h('code', {}, r.command)), h('td', {}, (r.why ? r.why + ' ' : '') + (r.output || ''), where ? h('div', { class:'where' }, where) : null), h('td', {}, (r.seen || []).join(' / ')));
+    tb.appendChild(tr);
+  });
+  $('summary').textContent = t('passed', ok, LAST.length);
+  drawScreen();
+}
+
+// ---------------- server / players ----------------
+async function refreshStatus() {
+  try {
+    const st = await (await fetch('/api/status')).json();
+    $('srvPill').textContent = st.running ? t('srv_on', st.version) + ' · ' + (st.players.length ? t('players_in', st.players.join(', ')) : t('no_players')) : t('srv_off');
+    $('srvPill').className = 'pill' + (st.running ? ' on' : '');
+    $('log').textContent = (st.log || []).join('\n');
+  } catch (e) { /* ignore */ }
+}
+async function srv(btn, path, body) {
+  btn.disabled = true;
+  try { await call(path, body); } catch (e) { $('runStatus').textContent = t('err') + e.message; } finally { btn.disabled = false; refreshStatus(); }
+}
+
+// ---------------- project bar ----------------
+function fillProjectBar() {
+  $('pTitle').value = P.title || ''; $('pNs').value = P.namespace || 'game';
+  $('pPlayers').value = players().join(', ');
+  const v = P.version || '1.20.1';
+  if (![...$('pVer').options].some((o) => o.value === v)) $('pVer').appendChild(h('option', { value:v }, v));
+  $('pVer').value = v;
+  $('saveName').value = NAME;
+}
+function fillPicker() {
+  const cur = $('projPick').value;
+  $('projPick').innerHTML = '';
+  for (const p of PROJECTS) $('projPick').appendChild(h('option', { value:p.name }, `${p.title} [${p.where === 'saved' ? t('where_saved') : t('where_example')}] ${p.version || ''}`));
+  if (cur) $('projPick').value = cur; else if (NAME) $('projPick').value = NAME;
+}
+async function loadProjects() { try { PROJECTS = await call('/api/projects'); } catch (e) { PROJECTS = []; } fillPicker(); }
+async function openProject(name, keepSel) {
+  P = await call('/api/project/load', { name });
+  P.modules = P.modules || []; P.scenarios = P.scenarios || [];
+  NAME = name; CHECK = null; LAST = []; LOADERR = []; LASTRUN = null; dirty(false);
+  if (!keepSel || !SEL || !(SEL.type === 'module' ? modById(SEL.id) : scById(SEL.id))) SEL = P.scenarios[0] ? { type:'scenario', id:P.scenarios[0].id } : (P.modules[0] ? { type:'module', id:P.modules[0].id } : null);
+  fillProjectBar(); $('projPick').value = name; status(t('loaded', P.title || name), 'ok');
+  renderAll(); setUrl(); runCheck(true);
+}
+function newProject() {
+  if (DIRTY && !confirm(t('confirm_new'))) return;
+  P = { version: $('pVer').value || '1.20.1', title: t('new_title'), namespace:'game', player_names:['Alice', 'Bob'],
+    modules:[{ id:'setup', label: LANG() === 'en' ? 'Setup' : '準備', kind:'function', load:true, lines:['scoreboard objectives add game dummy'] }],
+    scenarios:[{ id:'main', label: t('new_sc') + ' 1', steps:[{ call:'setup' }] }] };
+  NAME = 'untitled'; CHECK = null; LAST = []; LASTRUN = null; LOADERR = [];
+  SEL = { type:'module', id:'setup' }; fillProjectBar(); dirty(true); renderAll(); setUrl();
+}
+async function runCheck(quiet) {
+  try {
+    CHECK = await call('/api/project/check', { project:P });
+    const box = $('msgs'); box.innerHTML = '';
+    const probs = CHECK.problems || [], lint = CHECK.lint || [];
+    if (!quiet || probs.length || lint.some((x) => x.level === 'error')) {
+      if (!probs.length && !lint.length) box.appendChild(h('div', { class:'ok' }, '✓ ' + t('check_ok')));
+      if (probs.length) box.appendChild(h('div', {}, h('b', { class:'ng' }, t('check_probs')), h('ul', {}, probs.map((p) => h('li', { class:'ng' }, p)))));
+      if (lint.length) box.appendChild(h('div', {}, h('b', {}, t('check_lint')), h('ul', {}, lint.map((f) => {
+        const id = String(f.file).replace(/^module /, '');
+        return h('li', { class: f.level === 'error' ? 'ng' : 'warn', onclick:() => modById(id) && select('module', id) }, `[${f.level}] ${f.file} L${f.line}: ${f.message}`);
+      }))));
+    }
+    renderLists(); if (TAB === 'edit') renderEditor();
+  } catch (e) { status(t('err') + e.message, 'ng'); }
+}
+
+// ---------------- render all ----------------
+function applyLang() {
+  document.documentElement.lang = LANG();
+  document.querySelectorAll('[data-i]').forEach((el) => { const v = I18N[LANG()][el.dataset.i]; if (typeof v === 'string') el.textContent = v; });
+  document.querySelectorAll('[data-ip]').forEach((el) => { const v = I18N[LANG()][el.dataset.ip]; if (typeof v === 'string') el.placeholder = v; });
+  dirty(DIRTY); fillPicker(); renderAll(); refreshStatus();
+}
+function renderAll() {
+  if (!P) return;
+  renderLists();
+  for (const [id, k] of [['tabEdit', 'edit'], ['tabFlow', 'flow'], ['tabRes', 'res']]) $(id).classList.toggle('on', TAB === k);
+  $('paneEdit').style.display = TAB === 'edit' ? '' : 'none';
+  $('paneFlow').style.display = TAB === 'flow' ? '' : 'none';
+  $('paneRes').style.display = TAB === 'res' ? '' : 'none';
+  if (TAB === 'edit') renderEditor();
+  if (TAB === 'flow') renderFlow();
+  renderResults();
+}
+
+// ---------------- wiring ----------------
+$('tabEdit').onclick = () => { TAB = 'edit'; renderAll(); };
+$('tabFlow').onclick = () => { TAB = 'flow'; renderAll(); };
+$('tabRes').onclick = () => { TAB = 'res'; renderAll(); };
+$('lang').onchange = () => { try { localStorage.setItem('cmdlab_lang', LANG()); } catch (e) { /* */ } applyLang(); setUrl(); };
+$('btnOpen').onclick = async () => { if (DIRTY && !confirm(t('confirm_open'))) return; try { await openProject($('projPick').value); } catch (e) { status(t('err') + e.message, 'ng'); } };
+$('btnNew').onclick = newProject;
+$('btnSave').onclick = async (e) => {
+  const name = ($('saveName').value.trim() || NAME || 'untitled').replace(/[\\/:*?"<>|]/g, '_');
+  e.target.disabled = true;
+  try { const j = await call('/api/project/save', { name, project:P }); NAME = name; dirty(false); status(t('saved', j.saved), 'ok'); await loadProjects(); $('projPick').value = name; setUrl(); }
+  catch (er) { status(t('err') + er.message, 'ng'); } finally { e.target.disabled = false; }
+};
+$('btnCheck').onclick = () => runCheck(false);
+$('btnExport').onclick = async (e) => { e.target.disabled = true; try { const j = await call('/api/project/export', { project:P }); status(t('exported', j.out), 'ok'); } catch (er) { status(t('err') + er.message, 'ng'); } finally { e.target.disabled = false; } };
+$('pTitle').oninput = (e) => setKey(P, 'title', e.target.value);
+$('pNs').onchange = (e) => { setKey(P, 'namespace', e.target.value.trim() || 'game'); renderAll(); };
+$('pVer').onchange = (e) => { setKey(P, 'version', e.target.value); runCheck(true); };
+$('pPlayers').onchange = (e) => { setKey(P, 'player_names', e.target.value.split(/[\s,]+/).filter(Boolean)); renderAll(); };
+$('addFn').onclick = () => addModule('function');
+$('addBl').onclick = () => addModule('blocks');
+$('addSt').onclick = () => addModule('steps');
+$('addSc').onclick = () => { const sc = { id: uniqueId('scenario', scens()), label: t('new_sc') + ' ' + (scens().length + 1), steps: [] }; P.scenarios.push(sc); dirty(); select('scenario', sc.id); };
+$('runSc').onchange = () => { updateOnly(); if (TAB === 'flow' && SEL && SEL.type === 'scenario') select('scenario', $('runSc').value); };
+$('btnRunSc').onclick = (e) => run('scenario', e.target);
+$('btnRunMod').onclick = (e) => run('module', e.target);
+$('btnRunOnly').onclick = (e) => run('only', e.target);
+$('btnStart').onclick = (e) => srv(e.target, '/api/start', { version: P ? P.version : undefined });
+$('btnStop').onclick = (e) => srv(e.target, '/api/stop', {});
+$('btnPlayers').onclick = (e) => srv(e.target, '/api/players', { count: Math.max(1, players().length), names: players().join(',') || null, op: $('opPlayers').checked });
+window.addEventListener('beforeunload', (e) => { if (DIRTY) { e.preventDefault(); e.returnValue = ''; } });
+
+(async () => {
+  const q = new URLSearchParams(location.search);
+  try { $('lang').value = localStorage.getItem('cmdlab_lang') || 'ja'; } catch (e) { /* */ }
+  if (q.get('lang')) $('lang').value = q.get('lang') === 'en' ? 'en' : 'ja';
+  document.querySelectorAll('[data-i]').forEach((el) => { const v = I18N[LANG()][el.dataset.i]; if (typeof v === 'string') el.textContent = v; });
+  document.querySelectorAll('[data-ip]').forEach((el) => { const v = I18N[LANG()][el.dataset.ip]; if (typeof v === 'string') el.placeholder = v; });
+  try { const v = await (await fetch('/api/versions')).json(); for (const x of v.supported) $('pVer').appendChild(h('option', { value:x }, x)); } catch (e) { /* */ }
+  await loadProjects();
+  const name = q.get('project') || (PROJECTS[0] || {}).name;
+  if (name) { try { await openProject(name); } catch (e) { status(t('err') + e.message, 'ng'); newProject(); } } else newProject();
+  if (q.get('module') && modById(q.get('module'))) SEL = { type:'module', id:q.get('module') };
+  if (q.get('scenario') && scById(q.get('scenario'))) SEL = { type:'scenario', id:q.get('scenario') };
+  const view = q.get('view');
+  if (view === 'blocks' && !(SEL && SEL.type === 'module' && kindOf(modById(SEL.id)) === 'blocks')) { const b = mods().find((m) => kindOf(m) === 'blocks'); if (b) SEL = { type:'module', id:b.id }; }
+  if (view === 'flow') TAB = 'flow';
+  if (view === 'results') TAB = 'res';
+  if (q.get('block')) SELBLOCK = (+q.get('block') || 1) - 1;
+  if (q.get('open')) { const sc = SEL && SEL.type === 'scenario' ? scById(SEL.id) : (SEL ? modById(SEL.id) : null); const st = sc && (sc.steps || [])[(+q.get('open') || 1) - 1]; if (st) OPEN.add(st); }
+  if (q.get('check')) { const sc = scById($('runSc').value) || scens()[0]; if (sc) q.get('check').split(',').forEach((n) => { const st = sc.steps[+n - 1]; if (st) CHECKED.add(st); }); }
+  if (q.get('result') === '1') { try { LAST = await (await fetch('/api/last')).json(); TAB = 'res'; } catch (e) { /* */ } }
+  renderAll(); setUrl();
+  refreshStatus(); setInterval(refreshStatus, 4000);
+})();
+</script>
+</body>
+</html>

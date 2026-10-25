@@ -55,6 +55,7 @@ pre.log { background:var(--code); border-radius:8px; padding:8px; max-height:200
 <header>
   <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
     <h1>mc-cmdlab</h1>
+    <a href="/editor" data-i="l_editor" style="margin-left:auto;color:var(--acc)">コマンド設定ページ(部品・コマンドブロック・シナリオ) →</a>
     <label class="check" style="margin:0"><span data-i="lang">言語</span>
       <select id="lang" style="width:auto"><option value="ja">日本語</option><option value="en">English</option></select></label>
   </div>
@@ -175,10 +176,10 @@ const EXAMPLE = {
   ]
 };
 const I18N = {
-  ja: { lang:'言語', tagline:'マイクラ(Java 版)のコマンドを、人を集めずに、コマンドブロックを置かずに試す環境。手元だけで動きます。',
+  ja: { lang:'言語', l_editor:'コマンド設定ページ(部品・コマンドブロック・シナリオ) →', tagline:'マイクラ(Java 版)のコマンドを、人を集めずに、コマンドブロックを置かずに試す環境。手元だけで動きます。',
         h_result:'結果', h_story:'順番に何が起きたか', c_res:'結果', c_what:'していること', c_cmd:'コマンド', c_reply:'サーバーの返事・エラーの場所', c_seen:'プレイヤーが見たもの',
         ok:'OK', ng:'失敗', passed:(a,b)=>`${a} / ${b} 段が成功`, saw:'見えたもの', h_screen:'マイクラの画面での見え方', l_player:'プレイヤー', l_step:'段', l_tab:'Tab を押した状態', h_log:'サーバーのログ', l_count:'人数', l_names:'名前(空なら Tester1, Tester2 …。カンマか改行で区切る・英数字と _ で3〜16文字)', l_prov:'AI の接続先', l_op:'テスト用プレイヤーを OP にする(プレイヤー自身が管理者コマンドを打てる)', l_model:'モデル', l_key:'API キー(空なら手元の環境変数。ここに入れた鍵は保存しません)' },
-  en: { lang:'Language', tagline:'Test Minecraft (Java) commands without gathering people or placing command blocks. Runs only on your PC.',
+  en: { lang:'Language', l_editor:'Command editor (parts, command blocks, scenarios) →', tagline:'Test Minecraft (Java) commands without gathering people or placing command blocks. Runs only on your PC.',
         h_result:'Results', h_story:'What happened, step by step', c_res:'Result', c_what:'What it does', c_cmd:'Command', c_reply:'Server reply / error location', c_seen:'What players saw',
         ok:'OK', ng:'Failed', passed:(a,b)=>`${a} / ${b} steps passed`, saw:'seen', h_screen:'How it looks in Minecraft', l_player:'Player', l_step:'Step', l_tab:'Holding Tab', h_log:'Server log', l_count:'Number of players', l_names:'Names (empty = Tester1, Tester2 ...; comma or newline; 3-16 letters, digits, _)', l_prov:'AI provider', l_op:'Make test players OP (they can run admin commands themselves)', l_model:'Model', l_key:'API key (empty = your environment variable; a key typed here is never saved)' } };
 let LAST = [];
